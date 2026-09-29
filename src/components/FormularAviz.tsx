@@ -1,0 +1,212 @@
+"use client";
+
+import { useState } from "react";
+import { CATEGORII } from "@/lib/types";
+import type { CategorieCheltuiala, ProdusNou } from "@/lib/types";
+
+const CAMP_LABEL: Record<string, string> = {
+  furnizor: "Furnizor",
+  numar_aviz: "Nr. aviz",
+  data_aviz: "Data",
+  produse: "Produse",
+};
+
+function randGol(): ProdusNou {
+  return { denumire: "", cantitate: null, unitate_masura: null, pret_unitar: null, valoare: 0, categorie: "diverse" };
+}
+
+export interface DateSalvareAviz {
+  furnizor: string;
+  numar_aviz: string;
+  data_aviz: string;
+  produse: ProdusNou[];
+}
+
+export function FormularAviz({
+  valoriInitiale,
+  campIncert = [],
+  poza,
+  pozaExistentaUrl,
+  furnizoriCunoscuti,
+  seSalveaza,
+  textButonSalveaza = "Salvează avizul",
+  onSalveaza,
+  onRenunta,
+}: {
+  valoriInitiale: { furnizor: string; numar_aviz: string; data_aviz: string; produse: ProdusNou[] };
+  campIncert?: string[];
+  poza: File | null;
+  pozaExistentaUrl?: string | null;
+  furnizoriCunoscuti: string[];
+  seSalveaza: boolean;
+  textButonSalveaza?: string;
+  onSalveaza: (date: DateSalvareAviz) => void;
+  onRenunta: () => void;
+}) {
+  const [furnizor, setFurnizor] = useState(valoriInitiale.furnizor);
+  const [numarAviz, setNumarAviz] = useState(valoriInitiale.numar_aviz);
+  const [dataAviz, setDataAviz] = useState(valoriInitiale.data_aviz);
+  const [produse, setProduse] = useState<ProdusNou[]>(valoriInitiale.produse.length > 0 ? valoriInitiale.produse : [randGol()]);
+
+  const incert = new Set(campIncert);
+  const previewUrl = poza ? URL.createObjectURL(poza) : pozaExistentaUrl ?? null;
+  const estePdf = poza?.type === "application/pdf";
+  const totalProduse = produse.reduce((s, p) => s + (Number(p.valoare) || 0), 0);
+  const areProdusFaraPret = produse.some((p) => p.denumire.trim() && !p.valoare);
+
+  function claseCamp(nume: string) {
+    return `w-full rounded-lg border p-2 ${incert.has(nume) ? "border-amber-400 bg-amber-50" : "border-slate-300"}`;
+  }
+  function labelCamp(nume: string) {
+    return incert.has(nume) ? `${CAMP_LABEL[nume]} — verifică` : CAMP_LABEL[nume];
+  }
+
+  function actualizeazaRand(i: number, campuri: Partial<ProdusNou>) {
+    setProduse((rnd) => rnd.map((r, idx) => (idx === i ? { ...r, ...campuri } : r)));
+  }
+  function stergeRand(i: number) {
+    setProduse((rnd) => rnd.filter((_, idx) => idx !== i));
+  }
+
+  function submite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!furnizor.trim()) return alert("Completează furnizorul.");
+    const produseValide = produse.filter((p) => p.denumire.trim());
+    if (produseValide.length === 0) return alert("Adaugă cel puțin un produs.");
+    onSalveaza({ furnizor: furnizor.trim(), numar_aviz: numarAviz.trim(), data_aviz: dataAviz, produse: produseValide });
+  }
+
+  return (
+    <form onSubmit={submite} className="flex flex-col gap-4 p-4">
+      {campIncert.length > 0 && (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Verifică câmpurile evidențiate — nu au putut fi citite cu certitudine de pe poză.
+        </p>
+      )}
+      {areProdusFaraPret && (
+        <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-600">
+          ℹ️ Acest aviz are produse fără preț completat — cheltuiala nu se vede în total până nu îl adaugi.
+        </p>
+      )}
+
+      {previewUrl &&
+        (estePdf ? (
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-300 p-3 text-sm text-slate-600">
+            📄 Deschide PDF-ul
+          </a>
+        ) : (
+          <img src={previewUrl} alt="Poza avizului" className="max-h-48 w-full rounded-lg object-contain" />
+        ))}
+
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {labelCamp("furnizor")}
+        <input
+          className={claseCamp("furnizor")}
+          value={furnizor}
+          onChange={(e) => setFurnizor(e.target.value)}
+          list="lista-furnizori"
+          required
+        />
+        <datalist id="lista-furnizori">
+          {furnizoriCunoscuti.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+      </label>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {labelCamp("numar_aviz")}
+          <input className={claseCamp("numar_aviz")} value={numarAviz} onChange={(e) => setNumarAviz(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {labelCamp("data_aviz")}
+          <input type="date" className={claseCamp("data_aviz")} value={dataAviz} onChange={(e) => setDataAviz(e.target.value)} />
+        </label>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between">
+          <p className={`text-sm font-medium ${incert.has("produse") ? "text-amber-700" : ""}`}>{labelCamp("produse")}</p>
+          <p className="text-sm text-slate-500">Total: {totalProduse.toFixed(2)} RON</p>
+        </div>
+
+        {produse.map((p, i) => (
+          <div key={i} className="rounded-lg border border-slate-300 p-3">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded border border-slate-300 p-2 text-sm"
+                placeholder="Denumire produs (ex. Ciment)"
+                value={p.denumire}
+                onChange={(e) => actualizeazaRand(i, { denumire: e.target.value })}
+              />
+              <button type="button" onClick={() => stergeRand(i)} className="px-2 text-slate-400" aria-label="Șterge rândul">
+                ✕
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              <input
+                type="number"
+                step="0.01"
+                className="rounded border border-slate-300 p-2 text-sm"
+                placeholder="Cant."
+                value={p.cantitate ?? ""}
+                onChange={(e) => actualizeazaRand(i, { cantitate: e.target.value ? Number(e.target.value) : null })}
+              />
+              <input
+                className="rounded border border-slate-300 p-2 text-sm"
+                placeholder="UM"
+                value={p.unitate_masura ?? ""}
+                onChange={(e) => actualizeazaRand(i, { unitate_masura: e.target.value || null })}
+              />
+              <input
+                type="number"
+                step="0.01"
+                className="rounded border border-slate-300 p-2 text-sm"
+                placeholder="Preț unit."
+                value={p.pret_unitar ?? ""}
+                onChange={(e) => actualizeazaRand(i, { pret_unitar: e.target.value ? Number(e.target.value) : null })}
+              />
+              <input
+                type="number"
+                step="0.01"
+                className="rounded border border-slate-300 p-2 text-sm font-semibold"
+                placeholder="Valoare"
+                value={p.valoare ?? ""}
+                onChange={(e) => actualizeazaRand(i, { valoare: Number(e.target.value) || 0 })}
+              />
+            </div>
+            <select
+              className="mt-2 w-full rounded border border-slate-300 p-2 text-sm"
+              value={p.categorie}
+              onChange={(e) => actualizeazaRand(i, { categorie: e.target.value as CategorieCheltuiala })}
+            >
+              {CATEGORII.map((c) => (
+                <option key={c.valoare} value={c.valoare}>
+                  {c.eticheta}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setProduse((rnd) => [...rnd, randGol()])}
+          className="rounded-lg border border-dashed border-slate-300 py-2 text-sm text-slate-500"
+        >
+          + Adaugă rând
+        </button>
+      </div>
+
+      <div className="flex gap-3">
+        <button type="button" onClick={onRenunta} className="flex-1 rounded-lg border border-slate-300 py-3 font-medium">
+          Renunță
+        </button>
+        <button type="submit" disabled={seSalveaza} className="flex-1 rounded-lg bg-slate-900 py-3 font-medium text-white disabled:opacity-50">
+          {seSalveaza ? "Se salvează…" : textButonSalveaza}
+        </button>
+      </div>
+    </form>
+  );
+}
