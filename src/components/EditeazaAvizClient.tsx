@@ -32,11 +32,11 @@ export function EditeazaAvizClient({ aviz, furnizoriCunoscuti }: { aviz: Aviz; f
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
-      <header className="flex items-center gap-3 pt-4">
-        <Link href={`/santier/${aviz.santier_id}`} className="text-slate-500">
+      <header className="flex items-center gap-3 pt-6">
+        <Link href={`/santier/${aviz.santier_id}`} className="font-semibold text-pink-500">
           ← Înapoi
         </Link>
-        <h1 className="text-xl font-bold">Editează avizul</h1>
+        <h1 className="font-fancy text-2xl text-pink-600">Editează avizul 💅</h1>
       </header>
 
       <FormularAviz

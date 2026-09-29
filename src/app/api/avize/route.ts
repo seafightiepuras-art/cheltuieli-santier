@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   const dataAviz = String(formData.get("data_aviz") ?? "").trim() || null;
   const campIncertRaw = String(formData.get("camp_incert") ?? "[]");
   const produseRaw = String(formData.get("produse") ?? "[]");
+  const forteaza = String(formData.get("forteaza") ?? "") === "true";
 
   if (!santierId) {
     return NextResponse.json({ eroare: "Alege șantierul" }, { status: 400 });
@@ -43,6 +44,29 @@ export async function POST(req: Request) {
   }
 
   const supabase = creeazaClientAdmin();
+
+  // Verificare duplicat: acelasi numar de aviz, de la acelasi furnizor, pe acelasi santier —
+  // aproape sigur e vorba de aceeasi hartie incarcata de doua ori.
+  if (numarAviz && !forteaza) {
+    const { data: existent } = await supabase
+      .from("avize")
+      .select("id, furnizor, numar_aviz, data_aviz")
+      .eq("santier_id", santierId)
+      .ilike("furnizor", furnizor)
+      .ilike("numar_aviz", numarAviz)
+      .maybeSingle();
+
+    if (existent) {
+      return NextResponse.json(
+        {
+          posibilDuplicat: true,
+          avizExistent: existent,
+          eroare: `Ai mai încărcat avizul ${existent.numar_aviz} de la ${existent.furnizor} pe acest șantier.`,
+        },
+        { status: 409 }
+      );
+    }
+  }
 
   let pozaUrl: string | null = null;
   let pozaPath: string | null = null;
