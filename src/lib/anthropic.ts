@@ -15,7 +15,7 @@ Format exact:
   "numar_aviz": string | null,
   "data_aviz": string | null,
   "produse": [
-    { "denumire": string, "cantitate": number | null, "unitate_masura": string | null, "pret_unitar": number | null, "valoare": number | null, "categorie": "materiale" | "combustibil" | "utilaje" | "transport" | "diverse" }
+    { "denumire": string, "cantitate": number | null, "unitate_masura": string | null, "pret_unitar": number | null, "valoare_fara_tva": number | null, "tva_valoare": number | null, "categorie": "materiale" | "combustibil" | "utilaje" | "transport" | "diverse" }
   ],
   "camp_incert": string[]
 }
@@ -27,7 +27,9 @@ Reguli:
 - "produse": o listă cu FIECARE produs/material de pe aviz, ca rând separat, în ordinea în care apar pe document. NU le grupa și NU le rezuma într-un singur rând — dacă avizul are 5 produse, lista trebuie să aibă 5 elemente.
   - "cantitate" și "unitate_masura" (ex. "buc", "kg", "mc", "ml", "tona", "sac", "ore"), dacă apar pe document.
   - "pret_unitar", dacă apare pe document (unele avize nu au preț — atunci pune null).
-  - "valoare" e suma totală a acelui rând (cantitate × preț unitar, sau cum apare direct pe document). Dacă avizul nu are deloc prețuri, pune valoarea pe null pentru toate rândurile.
+  - "valoare_fara_tva": TRANSCRIE (nu calcula) numărul tipărit exact în coloana "Valoare" / "Valoare fără T.V.A." de pe acel rând. NU aduna nimic, doar citește cifra așa cum apare.
+  - "tva_valoare": TRANSCRIE (nu calcula) numărul tipărit exact în coloana "T.V.A." (valoare, nu procent) de pe acel rând, dacă există o asemenea coloană. Dacă documentul nu are deloc coloană separată de T.V.A. pentru produse, pune null.
+  - NU aduna tu "valoare_fara_tva" cu "tva_valoare" — le vrem separat, ca două cifre citite direct de pe hârtie, exact cum sunt tipărite. Calculul îl facem noi după.
   - "categorie" — clasifică fiecare produs cât mai bine, după conținutul lui:
     - "materiale" — materiale de construcții (ciment, nisip, pietriș, cărămidă, BCA, fier beton, lemn, izolații, vopsele, țiglă, pavele, țevi, cabluri etc.)
     - "combustibil" — motorină, benzină, gaz
@@ -44,12 +46,20 @@ function curataProdus(p: unknown): ProdusOcr {
   const categorie = CATEGORII_VALIDE.includes(obj.categorie as CategorieCheltuiala)
     ? (obj.categorie as CategorieCheltuiala)
     : "diverse";
+
+  // AI-ul transcrie separat valoarea fara TVA si TVA-ul (doua cifre citite de pe
+  // hartie), iar aici le adunam noi exact, in cod — nu lasam modelul sa faca
+  // singur adunarea, pentru ca aproximeaza gresit la calcule.
+  const valoareFaraTva = typeof obj.valoare_fara_tva === "number" ? obj.valoare_fara_tva : null;
+  const tvaValoare = typeof obj.tva_valoare === "number" ? obj.tva_valoare : 0;
+  const valoare = valoareFaraTva !== null ? Math.round((valoareFaraTva + tvaValoare) * 100) / 100 : null;
+
   return {
     denumire: typeof obj.denumire === "string" && obj.denumire.trim() ? obj.denumire.trim() : "Produs necunoscut",
     cantitate: typeof obj.cantitate === "number" ? obj.cantitate : null,
     unitate_masura: typeof obj.unitate_masura === "string" ? obj.unitate_masura : null,
     pret_unitar: typeof obj.pret_unitar === "number" ? obj.pret_unitar : null,
-    valoare: typeof obj.valoare === "number" ? obj.valoare : null,
+    valoare,
     categorie,
   };
 }
