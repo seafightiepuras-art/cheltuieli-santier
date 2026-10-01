@@ -28,7 +28,17 @@ export default async function Acasa() {
             className={`flex items-center justify-between rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm transition hover:shadow-lg hover:shadow-pink-200 ${!s.activ ? "opacity-50" : ""}`}
           >
             <span className="font-semibold text-rose-800">{s.nume}</span>
-            <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-pink-600">{formateazaSuma(s.totalCheltuit)}</span>
+            <span className="flex flex-col items-end gap-1">
+              {s.totaluriPeMoneda.length === 0 ? (
+                <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-pink-600">{formateazaSuma(0)}</span>
+              ) : (
+                s.totaluriPeMoneda.map((t) => (
+                  <span key={t.moneda} className="rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-pink-600">
+                    {formateazaSuma(t.total, t.moneda)}
+                  </span>
+                ))
+              )}
+            </span>
           </Link>
         ))}
         <AdaugaSantier />

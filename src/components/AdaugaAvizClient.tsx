@@ -13,6 +13,7 @@ const OCR_GOL: OcrResult = {
   furnizor: null,
   numar_aviz: null,
   data_aviz: null,
+  moneda: "RON",
   produse: [],
   camp_incert: [],
 };
@@ -93,6 +94,7 @@ export function AdaugaAvizClient({
       formData.append("furnizor", date.furnizor);
       formData.append("numar_aviz", date.numar_aviz);
       formData.append("data_aviz", date.data_aviz);
+      formData.append("moneda", date.moneda);
       formData.append("produse", JSON.stringify(date.produse));
       formData.append("camp_incert", JSON.stringify(rezultatOcr.camp_incert ?? []));
       if (forteaza) formData.append("forteaza", "true");
@@ -174,6 +176,7 @@ export function AdaugaAvizClient({
               furnizor: rezultatOcr.furnizor ?? "",
               numar_aviz: rezultatOcr.numar_aviz ?? "",
               data_aviz: rezultatOcr.data_aviz ?? "",
+              moneda: rezultatOcr.moneda ?? "RON",
               produse: rezultatOcr.produse.map((p) => ({
                 denumire: p.denumire,
                 cantitate: p.cantitate,

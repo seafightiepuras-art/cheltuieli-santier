@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   let interogare = supabase
     .from("avize")
-    .select("numar_aviz, furnizor, data_aviz, santiere(nume), produse(denumire, cantitate, unitate_masura, pret_unitar, valoare, categorie)")
+    .select("numar_aviz, furnizor, data_aviz, moneda, santiere(nume), produse(denumire, cantitate, unitate_masura, pret_unitar, valoare, categorie)")
     .order("data_aviz", { ascending: true });
   if (santierId) interogare = interogare.eq("santier_id", santierId);
 
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const etichetaCategorie = new Map(CATEGORII.map((c) => [c.valoare, c.eticheta]));
 
   const randuri: string[][] = [
-    ["Șantier", "Nr. aviz", "Furnizor", "Data", "Produs", "Cantitate", "UM", "Preț unitar", "Valoare", "Categorie"],
+    ["Șantier", "Nr. aviz", "Furnizor", "Data", "Monedă", "Produs", "Cantitate", "UM", "Preț unitar", "Valoare", "Categorie"],
   ];
 
   for (const aviz of (data ?? []) as any[]) {
@@ -37,6 +37,7 @@ export async function GET(req: Request) {
         aviz.numar_aviz ?? "",
         aviz.furnizor,
         aviz.data_aviz ?? "",
+        aviz.moneda ?? "RON",
         p.denumire,
         p.cantitate ?? "",
         p.unitate_masura ?? "",

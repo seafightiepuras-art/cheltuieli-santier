@@ -12,6 +12,8 @@ export async function POST(req: Request) {
   const furnizor = String(formData.get("furnizor") ?? "").trim();
   const numarAviz = String(formData.get("numar_aviz") ?? "").trim() || null;
   const dataAviz = String(formData.get("data_aviz") ?? "").trim() || null;
+  const monedaRaw = String(formData.get("moneda") ?? "RON").trim();
+  const moneda = monedaRaw === "EUR" ? "EUR" : "RON";
   const campIncertRaw = String(formData.get("camp_incert") ?? "[]");
   const produseRaw = String(formData.get("produse") ?? "[]");
   const forteaza = String(formData.get("forteaza") ?? "") === "true";
@@ -100,6 +102,7 @@ export async function POST(req: Request) {
       furnizor,
       numar_aviz: numarAviz,
       data_aviz: dataAviz,
+      moneda,
       camp_incert: campIncert,
       poza_url: pozaUrl,
       poza_path: pozaPath,

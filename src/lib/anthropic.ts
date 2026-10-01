@@ -14,6 +14,7 @@ Format exact:
   "furnizor": string | null,
   "numar_aviz": string | null,
   "data_aviz": string | null,
+  "moneda": "RON" | "EUR",
   "produse": [
     { "denumire": string, "cantitate": number | null, "unitate_masura": string | null, "pret_unitar": number | null, "valoare_fara_tva": number | null, "tva_valoare": number | null, "categorie": "materiale" | "combustibil" | "utilaje" | "transport" | "diverse" }
   ],
@@ -24,6 +25,7 @@ Reguli:
 - "numar_aviz": numărul avizului, exact cum apare pe document.
 - "data_aviz" în format YYYY-MM-DD.
 - "furnizor": numele firmei care a EMIS avizul (vânzătorul/transportatorul), nu al firmei care primește marfa.
+- "moneda": "EUR" dacă pe document apare explicit "EUR" sau simbolul "€" lângă valori; altfel "RON" (implicit — inclusiv dacă apare "LEI" sau nu se specifică nimic).
 - "produse": o listă cu FIECARE produs/material de pe aviz, ca rând separat, în ordinea în care apar pe document. NU le grupa și NU le rezuma într-un singur rând — dacă avizul are 5 produse, lista trebuie să aibă 5 elemente.
   - "cantitate" și "unitate_masura" (ex. "buc", "kg", "mc", "ml", "tona", "sac", "ore"), dacă apar pe document.
   - "pret_unitar", dacă apare pe document (unele avize nu au preț — atunci pune null).
@@ -113,6 +115,7 @@ export async function extrageDateAviz(fisierBase64: string, mediaType: string): 
     furnizor: typeof parsat.furnizor === "string" ? parsat.furnizor : null,
     numar_aviz: typeof parsat.numar_aviz === "string" ? parsat.numar_aviz : null,
     data_aviz: typeof parsat.data_aviz === "string" ? parsat.data_aviz : null,
+    moneda: parsat.moneda === "EUR" ? "EUR" : "RON",
     produse: Array.isArray(parsat.produse) ? parsat.produse.map(curataProdus) : [],
     camp_incert: Array.isArray(parsat.camp_incert) ? (parsat.camp_incert as string[]) : [],
   };

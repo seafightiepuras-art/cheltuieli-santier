@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { CATEGORII } from "@/lib/types";
-import type { CategorieCheltuiala, ProdusNou } from "@/lib/types";
+import type { CategorieCheltuiala, Moneda, ProdusNou } from "@/lib/types";
 
 const CAMP_LABEL: Record<string, string> = {
   furnizor: "Furnizor",
   numar_aviz: "Nr. aviz",
   data_aviz: "Data",
+  moneda: "Monedă",
   produse: "Produse",
 };
 
@@ -19,6 +20,7 @@ export interface DateSalvareAviz {
   furnizor: string;
   numar_aviz: string;
   data_aviz: string;
+  moneda: Moneda;
   produse: ProdusNou[];
 }
 
@@ -35,7 +37,7 @@ export function FormularAviz({
   onSalveaza,
   onRenunta,
 }: {
-  valoriInitiale: { furnizor: string; numar_aviz: string; data_aviz: string; produse: ProdusNou[] };
+  valoriInitiale: { furnizor: string; numar_aviz: string; data_aviz: string; moneda: Moneda; produse: ProdusNou[] };
   campIncert?: string[];
   poza: File | null;
   pozaExistentaUrl?: string | null;
@@ -48,6 +50,7 @@ export function FormularAviz({
   const [furnizor, setFurnizor] = useState(valoriInitiale.furnizor);
   const [numarAviz, setNumarAviz] = useState(valoriInitiale.numar_aviz);
   const [dataAviz, setDataAviz] = useState(valoriInitiale.data_aviz);
+  const [moneda, setMoneda] = useState<Moneda>(valoriInitiale.moneda);
   const [produse, setProduse] = useState<ProdusNou[]>(valoriInitiale.produse.length > 0 ? valoriInitiale.produse : [randGol()]);
 
   const incert = new Set(campIncert);
@@ -75,7 +78,7 @@ export function FormularAviz({
     if (!furnizor.trim()) return alert("Completează furnizorul.");
     const produseValide = produse.filter((p) => p.denumire.trim());
     if (produseValide.length === 0) return alert("Adaugă cel puțin un produs.");
-    onSalveaza({ furnizor: furnizor.trim(), numar_aviz: numarAviz.trim(), data_aviz: dataAviz, produse: produseValide });
+    onSalveaza({ furnizor: furnizor.trim(), numar_aviz: numarAviz.trim(), data_aviz: dataAviz, moneda, produse: produseValide });
   }
 
   return (
@@ -121,10 +124,30 @@ export function FormularAviz({
         </label>
       </div>
 
+      <label className="flex flex-col gap-1 text-sm font-semibold text-rose-700">
+        {labelCamp("moneda")}
+        <div className="flex gap-2">
+          {(["RON", "EUR"] as Moneda[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMoneda(m)}
+              className={`flex-1 rounded-xl border py-2 text-sm font-semibold ${
+                moneda === m
+                  ? "border-pink-400 bg-pink-100 text-pink-700"
+                  : `${incert.has("moneda") ? "border-amber-400 bg-amber-50" : "border-pink-200 bg-white/90"} text-rose-400`
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </label>
+
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
           <p className={`text-sm font-semibold ${incert.has("produse") ? "text-amber-700" : "text-rose-700"}`}>{labelCamp("produse")}</p>
-          <p className="rounded-full bg-pink-100 px-3 py-0.5 text-sm font-semibold text-pink-600">Total: {totalProduse.toFixed(2)} RON</p>
+          <p className="rounded-full bg-pink-100 px-3 py-0.5 text-sm font-semibold text-pink-600">Total: {totalProduse.toFixed(2)} {moneda}</p>
         </div>
 
         {produse.map((p, i) => (

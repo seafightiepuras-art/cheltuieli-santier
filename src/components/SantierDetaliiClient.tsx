@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CATEGORII } from "@/lib/types";
 import type { Aviz, Santier } from "@/lib/types";
 import { formateazaData, formateazaSuma } from "@/lib/format";
-import { avizAreProduseFaraPret, totalAviz } from "@/lib/calcule";
+import { avizAreProduseFaraPret, calculeazaTotalePeCategorie, calculeazaTotalePeMoneda, totalAviz } from "@/lib/calcule";
 
 function lunaDinData(data: string | null): string | null {
   if (!data) return null;
@@ -43,16 +43,14 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
     });
   }, [avize, cautare, lunaAleasa]);
 
-  const totalFiltrat = avizeFiltrate.reduce((s, a) => s + totalAviz(a), 0);
+  const totalePeMoneda = useMemo(() => calculeazaTotalePeMoneda(avizeFiltrate), [avizeFiltrate]);
 
   const totalePeCategorie = useMemo(() => {
-    const totaluri = new Map<string, number>();
-    for (const a of avizeFiltrate) {
-      for (const p of a.produse ?? []) {
-        totaluri.set(p.categorie, (totaluri.get(p.categorie) ?? 0) + Number(p.valoare ?? 0));
-      }
-    }
-    return CATEGORII.map((c) => ({ ...c, total: totaluri.get(c.valoare) ?? 0 })).filter((c) => c.total > 0);
+    const etichetaCategorie = new Map(CATEGORII.map((c) => [c.valoare, c.eticheta]));
+    return calculeazaTotalePeCategorie(avizeFiltrate).map((t) => ({
+      ...t,
+      eticheta: etichetaCategorie.get(t.categorie) ?? t.categorie,
+    }));
   }, [avizeFiltrate]);
 
   const avizeFaraPret = avizeFiltrate.filter(avizAreProduseFaraPret);
@@ -88,14 +86,21 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
 
       <div className="rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
         <p className="text-sm font-medium text-pink-400">Total cheltuit{lunaAleasa !== "toate" ? ` — ${etichetaLuna(lunaAleasa)}` : ""}</p>
-        <p className="text-3xl font-bold text-rose-700">{formateazaSuma(totalFiltrat)}</p>
+        {totalePeMoneda.length === 0 && <p className="text-3xl font-bold text-rose-700">{formateazaSuma(0)}</p>}
+        <div className="flex flex-wrap items-baseline gap-x-4">
+          {totalePeMoneda.map((t) => (
+            <p key={t.moneda} className="text-3xl font-bold text-rose-700">
+              {formateazaSuma(t.total, t.moneda)}
+            </p>
+          ))}
+        </div>
 
         {totalePeCategorie.length > 0 && (
           <div className="mt-3 flex flex-col gap-1">
             {totalePeCategorie.map((c) => (
-              <div key={c.valoare} className="flex items-center justify-between text-sm">
+              <div key={`${c.moneda}-${c.categorie}`} className="flex items-center justify-between text-sm">
                 <span className="text-rose-500">{c.eticheta}</span>
-                <span className="font-semibold text-rose-700">{formateazaSuma(c.total)}</span>
+                <span className="font-semibold text-rose-700">{formateazaSuma(c.total, c.moneda)}</span>
               </div>
             ))}
           </div>
@@ -155,7 +160,7 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
                   {faraPret ? (
                     <span className="text-xs font-semibold text-amber-600">fără preț</span>
                   ) : (
-                    <span className="rounded-full bg-pink-100 px-2 py-0.5 font-semibold text-pink-600">{formateazaSuma(total)}</span>
+                    <span className="rounded-full bg-pink-100 px-2 py-0.5 font-semibold text-pink-600">{formateazaSuma(total, a.moneda)}</span>
                   )}
                 </div>
               </div>

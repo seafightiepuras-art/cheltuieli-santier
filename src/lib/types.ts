@@ -1,4 +1,5 @@
 export type CategorieCheltuiala = "materiale" | "combustibil" | "utilaje" | "transport" | "diverse";
+export type Moneda = "RON" | "EUR";
 
 export const CATEGORII: { valoare: CategorieCheltuiala; eticheta: string }[] = [
   { valoare: "materiale", eticheta: "Materiale" },
@@ -41,6 +42,7 @@ export interface Aviz {
   numar_aviz: string | null;
   furnizor: string;
   data_aviz: string | null;
+  moneda: Moneda;
   poza_url: string | null;
   poza_path: string | null;
   camp_incert: string[];
@@ -64,6 +66,7 @@ export interface OcrResult {
   furnizor: string | null;
   numar_aviz: string | null;
   data_aviz: string | null;
+  moneda: Moneda;
   produse: ProdusOcr[];
   camp_incert: string[];
 }

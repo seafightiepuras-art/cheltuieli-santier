@@ -44,6 +44,7 @@ export function EditeazaAvizClient({ aviz, furnizoriCunoscuti }: { aviz: Aviz; f
           furnizor: aviz.furnizor,
           numar_aviz: aviz.numar_aviz ?? "",
           data_aviz: aviz.data_aviz ?? "",
+          moneda: aviz.moneda,
           produse: (aviz.produse ?? []).map((p) => ({
             denumire: p.denumire,
             cantitate: p.cantitate,

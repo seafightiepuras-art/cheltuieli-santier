@@ -19,6 +19,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const furnizor = String(corp.furnizor ?? "").trim();
   const numarAviz = String(corp.numar_aviz ?? "").trim() || null;
   const dataAviz = String(corp.data_aviz ?? "").trim() || null;
+  const monedaRaw = String(corp.moneda ?? "RON").trim();
+  const moneda = monedaRaw === "EUR" ? "EUR" : "RON";
   const produse = (Array.isArray(corp.produse) ? corp.produse : []) as ProdusNou[];
   const produseValide = produse.filter((p) => p.denumire?.trim());
 
@@ -33,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const { error: eroareAviz } = await supabase
     .from("avize")
-    .update({ furnizor, numar_aviz: numarAviz, data_aviz: dataAviz })
+    .update({ furnizor, numar_aviz: numarAviz, data_aviz: dataAviz, moneda })
     .eq("id", params.id);
   if (eroareAviz) {
     return NextResponse.json({ eroare: `Nu am putut actualiza avizul: ${eroareAviz.message}` }, { status: 500 });

@@ -20,12 +20,15 @@ create table if not exists public.santiere (
 -- (facturile se urmăresc separat, în alt loc — aici e doar evidența mărfii
 -- primite pe șantier, ca să se vadă pe ce s-a dus banul)
 -- ---------------------------------------------------------------------------
+create type moneda_cheltuiala as enum ('RON', 'EUR');
+
 create table if not exists public.avize (
   id            uuid primary key default gen_random_uuid(),
   santier_id    uuid not null references public.santiere(id) on delete restrict,
   numar_aviz    text,
   furnizor      text not null,
   data_aviz     date,
+  moneda        moneda_cheltuiala not null default 'RON',
   poza_url      text,
   poza_path     text,
   camp_incert   text[] not null default '{}',

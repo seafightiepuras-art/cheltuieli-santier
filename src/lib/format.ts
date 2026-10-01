@@ -4,10 +4,10 @@ export function formateazaData(data: string | null): string {
   return d.toLocaleDateString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function formateazaSuma(suma: number): string {
+export function formateazaSuma(suma: number, moneda: "RON" | "EUR" = "RON"): string {
   try {
-    return new Intl.NumberFormat("ro-RO", { style: "currency", currency: "RON" }).format(suma);
+    return new Intl.NumberFormat("ro-RO", { style: "currency", currency: moneda }).format(suma);
   } catch {
-    return `${suma.toFixed(2)} RON`;
+    return `${suma.toFixed(2)} ${moneda}`;
   }
 }

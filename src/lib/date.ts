@@ -1,26 +1,35 @@
 import "server-only";
 import { creeazaClientServer } from "./supabase/server";
-import type { Aviz, Santier } from "./types";
+import type { Aviz, Moneda, Santier } from "./types";
 
 export interface SantierCuTotal extends Santier {
-  totalCheltuit: number;
+  totaluriPeMoneda: { moneda: Moneda; total: number }[];
 }
 
-/** Toate șantierele, cu totalul cheltuit (suma produselor de pe toate avizele lor). */
+/** Toate șantierele, cu totalul cheltuit (suma produselor de pe toate avizele lor),
+ * separat pe monedă — RON și EUR nu se adună între ele. */
 export async function fetchSantiere(): Promise<SantierCuTotal[]> {
   const supabase = creeazaClientServer();
   const [{ data: santiere }, { data: avizeCuProduse }] = await Promise.all([
     supabase.from("santiere").select("*").order("nume"),
-    supabase.from("avize").select("santier_id, produse(valoare)"),
+    supabase.from("avize").select("santier_id, moneda, produse(valoare)"),
   ]);
 
-  const totalPeSantier = new Map<string, number>();
-  for (const a of (avizeCuProduse ?? []) as { santier_id: string; produse: { valoare: number }[] }[]) {
+  const totalPeSantier = new Map<string, Map<Moneda, number>>();
+  for (const a of (avizeCuProduse ?? []) as { santier_id: string; moneda: Moneda; produse: { valoare: number }[] }[]) {
     const total = (a.produse ?? []).reduce((s, p) => s + Number(p.valoare ?? 0), 0);
-    totalPeSantier.set(a.santier_id, (totalPeSantier.get(a.santier_id) ?? 0) + total);
+    if (!totalPeSantier.has(a.santier_id)) totalPeSantier.set(a.santier_id, new Map());
+    const perMoneda = totalPeSantier.get(a.santier_id)!;
+    perMoneda.set(a.moneda, (perMoneda.get(a.moneda) ?? 0) + total);
   }
 
-  return (santiere ?? []).map((s) => ({ ...s, totalCheltuit: totalPeSantier.get(s.id) ?? 0 }));
+  return (santiere ?? []).map((s) => ({
+    ...s,
+    totaluriPeMoneda: Array.from(totalPeSantier.get(s.id)?.entries() ?? []).map(([moneda, total]) => ({
+      moneda,
+      total,
+    })),
+  }));
 }
 
 export async function fetchSantier(id: string): Promise<Santier | null> {
