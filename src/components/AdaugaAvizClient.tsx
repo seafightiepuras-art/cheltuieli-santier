@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CapturaAviz } from "./CapturaAviz";
 import { FormularAviz, type DateSalvareAviz } from "./FormularAviz";
+import { AnalizaAnimata } from "./AnalizaAnimata";
 import type { OcrResult, Santier } from "@/lib/types";
 
-type Stare = "alege_santier" | "idle" | "analiza" | "confirmare";
+type Stare = "alege_santier" | "idle" | "analiza" | "confirmare" | "salvat";
 
 const OCR_GOL: OcrResult = {
   furnizor: null,
@@ -112,7 +113,9 @@ export function AdaugaAvizClient({
       }
       setSalvateCuSucces((n) => n + 1);
       setSeSalveaza(false);
-      treciLaUrmatoarea();
+      // o mică confirmare vizuală înainte de a trece mai departe
+      setStare("salvat");
+      setTimeout(treciLaUrmatoarea, 1000);
     } catch (eroare) {
       alert(eroare instanceof Error ? eroare.message : "Nu am putut salva avizul.");
       setSeSalveaza(false);
@@ -161,10 +164,26 @@ export function AdaugaAvizClient({
 
       {stare === "idle" && <CapturaAviz onCaptura={porneseCoada} dezactivat={false} />}
 
-      {stare === "analiza" && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center text-pink-500">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-pink-200 border-t-pink-500" />
-          <p>Se citește avizul… 💕</p>
+      {stare === "analiza" && poza && <AnalizaAnimata poza={poza} />}
+
+      {stare === "salvat" && (
+        <div className="relative flex flex-col items-center gap-3 py-20 text-center">
+          {["💕", "✨", "🌸", "💖", "✨", "🌷", "💕", "🌸"].map((semn, i) => {
+            const unghi = (i / 8) * Math.PI * 2;
+            return (
+              <span
+                key={i}
+                className="inimioara"
+                style={{ "--tx": `${Math.cos(unghi) * 110}px`, "--ty": `${Math.sin(unghi) * 110}px`, "--del": `${i * 0.04}s` } as React.CSSProperties}
+              >
+                {semn}
+              </span>
+            );
+          })}
+          <div className="sare flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-4xl text-white shadow-lg shadow-pink-300">
+            ✓
+          </div>
+          <p className="apare font-fancy text-2xl text-pink-600">Salvat!</p>
         </div>
       )}
 

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CATEGORII } from "@/lib/types";
 import type { Aviz, Santier } from "@/lib/types";
 import { formateazaData, formateazaSuma } from "@/lib/format";
+import { SumaAnimata } from "@/components/SumaAnimata";
 import { avizAreProduseFaraPret, calculeazaTotalePeCategorie, calculeazaTotalePeMoneda, totalAviz } from "@/lib/calcule";
 
 function lunaDinData(data: string | null): string | null {
@@ -74,7 +75,7 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
           <Link href="/" className="text-sm font-semibold text-pink-500">
             ← Toate șantierele
           </Link>
-          <h1 className="font-fancy text-3xl text-pink-600">{santier.nume}</h1>
+          <h1 className="titlu-sclipitor font-fancy text-3xl">{santier.nume}</h1>
         </div>
         <a
           href={`/api/export?santier_id=${santier.id}`}
@@ -84,25 +85,36 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
         </a>
       </header>
 
-      <div className="rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
+      <div className="apare rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
         <p className="text-sm font-medium text-pink-400">Total cheltuit{lunaAleasa !== "toate" ? ` — ${etichetaLuna(lunaAleasa)}` : ""}</p>
         {totalePeMoneda.length === 0 && <p className="text-3xl font-bold text-rose-700">{formateazaSuma(0)}</p>}
         <div className="flex flex-wrap items-baseline gap-x-4">
           {totalePeMoneda.map((t) => (
             <p key={t.moneda} className="text-3xl font-bold text-rose-700">
-              {formateazaSuma(t.total, t.moneda)}
+              <SumaAnimata suma={t.total} moneda={t.moneda} />
             </p>
           ))}
         </div>
 
         {totalePeCategorie.length > 0 && (
           <div className="mt-3 flex flex-col gap-1">
-            {totalePeCategorie.map((c) => (
-              <div key={`${c.moneda}-${c.categorie}`} className="flex items-center justify-between text-sm">
-                <span className="text-rose-500">{c.eticheta}</span>
-                <span className="font-semibold text-rose-700">{formateazaSuma(c.total, c.moneda)}</span>
-              </div>
-            ))}
+            {totalePeCategorie.map((c, i) => {
+              const totalMoneda = totalePeMoneda.find((t) => t.moneda === c.moneda)?.total ?? 0;
+              const pondere = totalMoneda > 0 ? Math.max(3, Math.min(100, (c.total / totalMoneda) * 100)) : 0;
+              return (
+                <div key={`${c.moneda}-${c.categorie}`} className="apare" style={{ animationDelay: `${300 + i * 90}ms` }}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-rose-500">{c.eticheta}</span>
+                    <span className="font-semibold text-rose-700">
+                      <SumaAnimata suma={c.total} moneda={c.moneda} />
+                    </span>
+                  </div>
+                  <div className="bara-roz mt-1">
+                    <i style={{ "--w": `${pondere.toFixed(1)}%`, animationDelay: `${450 + i * 90}ms` } as React.CSSProperties} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -143,11 +155,15 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
             Niciun aviz aici 🌸
           </p>
         )}
-        {avizeFiltrate.map((a) => {
+        {avizeFiltrate.map((a, i) => {
           const total = totalAviz(a);
           const faraPret = avizAreProduseFaraPret(a);
           return (
-            <div key={a.id} className="rounded-2xl border border-pink-200 bg-white/85 p-3 shadow-sm shadow-pink-100 backdrop-blur-sm">
+            <div
+              key={a.id}
+              style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}
+              className="apare card-roz rounded-2xl border border-pink-200 bg-white/85 p-3 shadow-sm shadow-pink-100 backdrop-blur-sm"
+            >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-semibold text-rose-800">{a.furnizor}</p>
@@ -187,7 +203,7 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
 
       <Link
         href={`/adauga?santier=${santier.id}`}
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-3xl text-white shadow-lg shadow-pink-300 transition hover:scale-105"
+        className="fab fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-3xl text-white shadow-lg shadow-pink-300"
         aria-label="Adaugă aviz"
       >
         +

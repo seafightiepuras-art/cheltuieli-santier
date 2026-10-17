@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchSantiere } from "@/lib/date";
 import { formateazaSuma } from "@/lib/format";
+import { SumaAnimata } from "@/components/SumaAnimata";
 import { AdaugaSantier } from "@/components/AdaugaSantier";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export default async function Acasa() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4 pb-24">
       <header className="pt-6 text-center">
-        <h1 className="font-fancy text-4xl text-pink-600 drop-shadow-sm">✨ Cheltuieli Șantier ✨</h1>
+        <h1 className="titlu-sclipitor font-fancy text-4xl drop-shadow-sm">✨ Cheltuieli Șantier ✨</h1>
         <p className="mt-2 text-sm font-medium text-rose-500">Avize și cheltuieli, centralizate pe fiecare șantier 💕</p>
       </header>
 
@@ -21,11 +22,12 @@ export default async function Acasa() {
             Niciun șantier încă — adaugă primul mai jos 🌸
           </p>
         )}
-        {santiere.map((s) => (
+        {santiere.map((s, i) => (
           <Link
             key={s.id}
             href={`/santier/${s.id}`}
-            className={`flex items-center justify-between rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm transition hover:shadow-lg hover:shadow-pink-200 ${!s.activ ? "opacity-50" : ""}`}
+            style={{ animationDelay: `${Math.min(i, 8) * 80}ms` }}
+            className={`apare card-roz flex items-center justify-between rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm hover:shadow-lg hover:shadow-pink-200 ${!s.activ ? "opacity-50" : ""}`}
           >
             <span className="font-semibold text-rose-800">{s.nume}</span>
             <span className="flex flex-col items-end gap-1">
@@ -34,7 +36,7 @@ export default async function Acasa() {
               ) : (
                 s.totaluriPeMoneda.map((t) => (
                   <span key={t.moneda} className="rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-pink-600">
-                    {formateazaSuma(t.total, t.moneda)}
+                    <SumaAnimata suma={t.total} moneda={t.moneda} />
                   </span>
                 ))
               )}
@@ -46,7 +48,7 @@ export default async function Acasa() {
 
       <Link
         href="/adauga"
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-3xl text-white shadow-lg shadow-pink-300 transition hover:scale-105"
+        className="fab fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-3xl text-white shadow-lg shadow-pink-300"
         aria-label="Adaugă aviz"
       >
         +
