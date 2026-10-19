@@ -1,5 +1,6 @@
 import "server-only";
 import { creeazaClientServer } from "./supabase/server";
+import { esteFacturaEmisa } from "./types";
 import type { Aviz, Moneda, Santier } from "./types";
 
 export interface SantierCuTotal extends Santier {
@@ -12,11 +13,12 @@ export async function fetchSantiere(): Promise<SantierCuTotal[]> {
   const supabase = creeazaClientServer();
   const [{ data: santiere }, { data: avizeCuProduse }] = await Promise.all([
     supabase.from("santiere").select("*").order("nume"),
-    supabase.from("avize").select("santier_id, moneda, produse(valoare)"),
+    supabase.from("avize").select("santier_id, moneda, camp_incert, produse(valoare)"),
   ]);
 
   const totalPeSantier = new Map<string, Map<Moneda, number>>();
-  for (const a of (avizeCuProduse ?? []) as { santier_id: string; moneda: Moneda; produse: { valoare: number }[] }[]) {
+  for (const a of (avizeCuProduse ?? []) as { santier_id: string; moneda: Moneda; camp_incert: string[]; produse: { valoare: number }[] }[]) {
+    if (esteFacturaEmisa(a)) continue; // facturile emise nu sunt cheltuieli
     const total = (a.produse ?? []).reduce((s, p) => s + Number(p.valoare ?? 0), 0);
     if (!totalPeSantier.has(a.santier_id)) totalPeSantier.set(a.santier_id, new Map());
     const perMoneda = totalPeSantier.get(a.santier_id)!;
@@ -59,8 +61,16 @@ export async function fetchAvizeSantier(santierId: string): Promise<Aviz[]> {
 /** Nume de furnizori folosiți deja, pentru sugestii la completare (evită "Ciment SRL" vs "ciment srl"). */
 export async function fetchFurnizoriCunoscuti(): Promise<string[]> {
   const supabase = creeazaClientServer();
-  const { data } = await supabase.from("avize").select("furnizor");
-  const unici = new Set((data ?? []).map((r) => r.furnizor).filter(Boolean));
+  const { data } = await supabase.from("avize").select("furnizor, camp_incert");
+  const unici = new Set((data ?? []).filter((r) => !esteFacturaEmisa(r)).map((r) => r.furnizor).filter(Boolean));
   return Array.from(unici).sort((a, b) => a.localeCompare(b));
 }
 
+
+/** Clienți cărora le-ai emis deja facturi, pentru sugestii la completare. */
+export async function fetchClientiCunoscuti(): Promise<string[]> {
+  const supabase = creeazaClientServer();
+  const { data } = await supabase.from("avize").select("furnizor, camp_incert");
+  const unici = new Set((data ?? []).filter((r) => esteFacturaEmisa(r)).map((r) => r.furnizor).filter(Boolean));
+  return Array.from(unici).sort((a, b) => a.localeCompare(b));
+}

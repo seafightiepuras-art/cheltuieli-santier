@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CATEGORII } from "@/lib/types";
-import type { Aviz, Santier } from "@/lib/types";
+import type { Aviz, Moneda, Santier } from "@/lib/types";
 import { formateazaData, formateazaSuma } from "@/lib/format";
 import { SumaAnimata } from "@/components/SumaAnimata";
 import { avizAreProduseFaraPret, calculeazaTotalePeCategorie, calculeazaTotalePeMoneda, totalAviz } from "@/lib/calcule";
@@ -20,7 +20,7 @@ function etichetaLuna(luna: string): string {
   return nume.charAt(0).toUpperCase() + nume.slice(1);
 }
 
-export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avize: Aviz[] }) {
+export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santier; avize: Aviz[]; emise: Aviz[] }) {
   const router = useRouter();
   const [cautare, setCautare] = useState("");
   const [lunaAleasa, setLunaAleasa] = useState("toate");
@@ -28,12 +28,12 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
 
   const luniDisponibile = useMemo(() => {
     const set = new Set<string>();
-    for (const a of avize) {
+    for (const a of [...avize, ...emise]) {
       const l = lunaDinData(a.data_aviz);
       if (l) set.add(l);
     }
     return Array.from(set).sort().reverse();
-  }, [avize]);
+  }, [avize, emise]);
 
   const avizeFiltrate = useMemo(() => {
     const text = cautare.trim().toLowerCase();
@@ -55,6 +55,42 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
   }, [avizeFiltrate]);
 
   const avizeFaraPret = avizeFiltrate.filter(avizAreProduseFaraPret);
+
+  // Facturile emise: se filtrează doar după lună (căutarea e pentru avize)
+  const emiseFiltrate = useMemo(
+    () => emise.filter((f) => lunaAleasa === "toate" || lunaDinData(f.data_aviz) === lunaAleasa),
+    [emise, lunaAleasa]
+  );
+  const facturatPeMoneda = useMemo(() => calculeazaTotalePeMoneda(emiseFiltrate), [emiseFiltrate]);
+  // Cheltuit vs facturat, separat pe fiecare monedă (RON și EUR nu se adună); ambele au TVA inclus.
+  // Pentru comparație se iau toate avizele lunii, nu doar cele rămase după căutare.
+  const avizeLuna = useMemo(
+    () => avize.filter((a) => lunaAleasa === "toate" || lunaDinData(a.data_aviz) === lunaAleasa),
+    [avize, lunaAleasa]
+  );
+  const comparatie = useMemo(() => {
+    const cheltuit = new Map(calculeazaTotalePeMoneda(avizeLuna).map((t) => [t.moneda, t.total]));
+    const facturat = new Map(facturatPeMoneda.map((t) => [t.moneda, t.total]));
+    const monede = Array.from(new Set([...Array.from(cheltuit.keys()), ...Array.from(facturat.keys())])).sort();
+    return monede.map((moneda) => {
+      const c = cheltuit.get(moneda) ?? 0;
+      const fct = facturat.get(moneda) ?? 0;
+      return { moneda, cheltuit: c, facturat: fct, diferenta: fct - c };
+    });
+  }, [avizeLuna, facturatPeMoneda]);
+  const [seStergeFactura, setSeStergeFactura] = useState<string | null>(null);
+
+  async function stergeFactura(id: string) {
+    if (!confirm("Ștergi această factură emisă? Nu se poate anula.")) return;
+    setSeStergeFactura(id);
+    const res = await fetch(`/api/avize/${id}`, { method: "DELETE" });
+    setSeStergeFactura(null);
+    if (!res.ok) {
+      alert("Nu am putut șterge factura.");
+      return;
+    }
+    router.refresh();
+  }
 
   async function sterge(id: string) {
     if (!confirm("Ștergi acest aviz? Nu se poate anula.")) return;
@@ -118,6 +154,54 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
           </div>
         )}
       </div>
+
+      {(emise.length > 0 || comparatie.length > 0) && (
+        <div className="apare rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
+          <p className="text-sm font-medium text-pink-400">
+            Cât am băgat vs cât scot (cu TVA){lunaAleasa !== "toate" ? ` — ${etichetaLuna(lunaAleasa)}` : ""}
+          </p>
+          {comparatie.map((c) => {
+            const maxim = Math.max(c.cheltuit, c.facturat, 1);
+            const pozitiv = c.diferenta >= 0;
+            return (
+              <div key={c.moneda} className="mt-3 flex flex-col gap-2">
+                <div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-rose-500">Băgat (avize)</span>
+                    <span className="font-semibold text-rose-700">
+                      <SumaAnimata suma={c.cheltuit} moneda={c.moneda as Moneda} />
+                    </span>
+                  </div>
+                  <div className="bara-roz mt-1">
+                    <i style={{ "--w": `${Math.max(2, (c.cheltuit / maxim) * 100).toFixed(1)}%` } as React.CSSProperties} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-rose-500">Scos (facturi emise)</span>
+                    <span className="font-semibold text-rose-700">
+                      <SumaAnimata suma={c.facturat} moneda={c.moneda as Moneda} />
+                    </span>
+                  </div>
+                  <div className="bara-roz mt-1">
+                    <i style={{ "--w": `${Math.max(2, (c.facturat / maxim) * 100).toFixed(1)}%`, animationDelay: "150ms" } as React.CSSProperties} />
+                  </div>
+                </div>
+                <div
+                  className={`mt-1 flex items-center justify-between rounded-xl px-3 py-2 ${pozitiv ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+                >
+                  <span className="text-sm font-semibold">{pozitiv ? "În plus (facturat − băgat)" : "În minus (facturat − băgat)"}</span>
+                  <span className="text-lg font-bold">
+                    {pozitiv ? "+" : "−"}
+                    <SumaAnimata suma={Math.abs(c.diferenta)} moneda={c.moneda as Moneda} />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          {comparatie.length === 0 && <p className="mt-2 text-sm text-pink-400">Nu ai încă nicio sumă pe luna aleasă.</p>}
+        </div>
+      )}
 
       {avizeFaraPret.length > 0 && (
         <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
@@ -194,6 +278,63 @@ export function SantierDetaliiClient({ santier, avize }: { santier: Santier; avi
                 </Link>
                 <button onClick={() => sterge(a.id)} disabled={seSterge === a.id} className="font-medium text-red-400 underline disabled:opacity-50">
                   {seSterge === a.id ? "Se șterge…" : "Șterge"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-fancy text-xl text-pink-600">Facturi emise 🧾</h2>
+          <Link
+            href={`/factura-emisa?santier=${santier.id}`}
+            className="rounded-full border-2 border-pink-300 px-3 py-1.5 text-sm font-semibold text-pink-600"
+          >
+            + Factură emisă
+          </Link>
+        </div>
+        {emiseFiltrate.length === 0 && (
+          <p className="rounded-2xl border-2 border-dashed border-pink-300 bg-white/70 p-4 text-center text-sm text-pink-400 backdrop-blur-sm">
+            Nicio factură emisă aici încă.
+          </p>
+        )}
+        {emiseFiltrate.map((f, i) => {
+          const cu = totalAviz(f);
+          const fara = f.produse?.[0]?.pret_unitar;
+          return (
+            <div
+              key={f.id}
+              style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}
+              className="apare card-roz rounded-2xl border border-pink-200 bg-white/85 p-3 shadow-sm shadow-pink-100 backdrop-blur-sm"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-semibold text-rose-800">{f.furnizor}</p>
+                  <p className="text-xs text-pink-400">
+                    {f.numar_aviz ? `Factura ${f.numar_aviz} · ` : ""}
+                    {formateazaData(f.data_aviz)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">{formateazaSuma(cu, f.moneda)}</span>
+                  {fara !== null && fara !== undefined && (
+                    <p className="mt-1 text-xs text-pink-400">fără TVA {formateazaSuma(Number(fara), f.moneda)}</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2 flex gap-3 text-xs">
+                {f.poza_url && (
+                  <a href={f.poza_url} target="_blank" rel="noopener noreferrer" className="font-medium text-pink-500 underline">
+                    Vezi poza
+                  </a>
+                )}
+                <Link href={`/factura-emisa/${f.id}/editeaza`} className="font-medium text-pink-500 underline">
+                  Editează
+                </Link>
+                <button onClick={() => stergeFactura(f.id)} disabled={seStergeFactura === f.id} className="font-medium text-red-400 underline disabled:opacity-50">
+                  {seStergeFactura === f.id ? "Se șterge…" : "Șterge"}
                 </button>
               </div>
             </div>

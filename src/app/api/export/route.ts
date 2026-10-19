@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { creeazaClientAdmin } from "@/lib/supabase/admin";
-import { CATEGORII } from "@/lib/types";
+import { CATEGORII, esteFacturaEmisa } from "@/lib/types";
 
 function celulaCSV(v: unknown): string {
   const text = v === null || v === undefined ? "" : String(v);
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   let interogare = supabase
     .from("avize")
-    .select("numar_aviz, furnizor, data_aviz, moneda, santiere(nume), produse(denumire, cantitate, unitate_masura, pret_unitar, valoare, categorie)")
+    .select("numar_aviz, furnizor, data_aviz, moneda, camp_incert, santiere(nume), produse(denumire, cantitate, unitate_masura, pret_unitar, valoare, categorie)")
     .order("data_aviz", { ascending: true });
   if (santierId) interogare = interogare.eq("santier_id", santierId);
 
@@ -31,6 +31,7 @@ export async function GET(req: Request) {
   ];
 
   for (const aviz of (data ?? []) as any[]) {
+    if (esteFacturaEmisa(aviz)) continue;
     for (const p of aviz.produse ?? []) {
       randuri.push([
         aviz.santiere?.nume ?? "—",

@@ -70,3 +70,25 @@ export interface OcrResult {
   produse: ProdusOcr[];
   camp_incert: string[];
 }
+
+// --- Facturi emise (de firma proprie, către clienți) ---
+// Se păstrează în același tabel ca avizele (ca să rămână pe același șantier), marcate cu
+// un semn în `camp_incert`. Totalul cu TVA e `valoare` din singurul rând de produs, iar
+// valoarea fără TVA e în `pret_unitar` (TVA = diferența).
+
+export const MARCAJ_FACTURA_EMISA = "__factura_emisa";
+
+export function esteFacturaEmisa(a: { camp_incert?: string[] | null }): boolean {
+  return (a.camp_incert ?? []).includes(MARCAJ_FACTURA_EMISA);
+}
+
+export interface FacturaOcr {
+  client: string | null;
+  numar_factura: string | null;
+  data_factura: string | null;
+  moneda: Moneda;
+  total_fara_tva: number | null;
+  tva: number | null;
+  total_cu_tva: number | null;
+  camp_incert: string[];
+}
