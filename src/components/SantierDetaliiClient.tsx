@@ -200,6 +200,12 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
             );
           })}
           {comparatie.length === 0 && <p className="mt-2 text-sm text-pink-400">Nu ai încă nicio sumă pe luna aleasă.</p>}
+          <Link
+            href={`/factura-emisa?santier=${santier.id}`}
+            className="mt-3 block rounded-full bg-gradient-to-r from-pink-400 to-rose-400 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-pink-200"
+          >
+            🧾 Adaugă factură emisă (poză sau PDF)
+          </Link>
         </div>
       )}
 
