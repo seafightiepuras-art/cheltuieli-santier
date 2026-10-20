@@ -226,7 +226,7 @@ export function CosturiInterne({
         ))}
       </div>
 
-      <Sectiune titlu="Manoperă" subtitlu={`${c.oameni.length} oameni · ${zileOameni} zile · zile pontate pe acest șantier × tariful din Salarii`} total={c.totalManopera}>
+      <Sectiune titlu="Manoperă" subtitlu={`${c.oameni.length} oameni · ${zileOameni} zile-om (zilele fiecăruia, adunate) · zile pontate aici × tariful din Salarii`} total={c.totalManopera}>
         {c.oameni.length === 0 && <p className="text-sm text-pink-400">Nimeni nu e pontat pe acest șantier în perioada aleasă.</p>}
         <div className="divide-y divide-pink-100">
           {c.oameni.map((o) => (
