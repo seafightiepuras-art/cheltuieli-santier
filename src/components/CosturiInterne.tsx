@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formateazaSuma } from "@/lib/format";
 import { SumaAnimata } from "@/components/SumaAnimata";
 import type { RaspunsCosturi } from "@/lib/costuri-tipuri";
@@ -58,17 +58,36 @@ function CampNumar({
   );
 }
 
-function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns: RaspunsCosturi; santierId: string; reincarca: () => void; deschisImplicit: boolean }) {
+function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns: RaspunsCosturi; santierId: string; reincarca: (reset?: boolean) => void; deschisImplicit: boolean }) {
   const [alese, setAlese] = useState<string[]>(raspuns.legat ?? []);
   const [deschis, setDeschis] = useState(deschisImplicit);
   const [seSalveaza, setSeSalveaza] = useState(false);
+  const [lista, setLista] = useState<string[] | null>(raspuns.lista?.santiere ?? null);
+  const [eroareLista, setEroareLista] = useState<string | null>(null);
+
+  // Lista șantierelor din pontaj se aduce doar când e nevoie (la „Schimbă”)
+  useEffect(() => {
+    if (!deschis || lista) return;
+    let anulat = false;
+    fetch("/api/costuri-lista", { cache: "no-store" })
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (anulat) return;
+        if (!r.ok) setEroareLista(j.eroare ?? "Nu am putut aduce lista.");
+        else setLista((j as { santiere: string[] }).santiere);
+      })
+      .catch(() => !anulat && setEroareLista("Nu am putut contacta serverul."));
+    return () => {
+      anulat = true;
+    };
+  }, [deschis, lista]);
 
   async function salveaza() {
     setSeSalveaza(true);
     try {
       await salveazaSetari({ santierId, legatura: alese });
       setDeschis(false);
-      reincarca();
+      reincarca(true);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Nu am putut salva.");
     }
@@ -78,7 +97,7 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
   if (!deschis) {
     return (
       <p className="text-xs text-pink-400">
-        Legat de pontaj: <span className="font-semibold text-rose-600">{(raspuns.legat ?? []).join(", ")}</span>{" "}
+        Legat de pontaj: <span className="font-semibold text-rose-600">{(raspuns.legat ?? alese).join(", ")}</span>{" "}
         <button onClick={() => setDeschis(true)} className="font-medium text-pink-500 underline">
           Schimbă
         </button>
@@ -86,12 +105,32 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
     );
   }
 
+  const butoane = (
+    <div className="flex gap-2">
+      {raspuns.configurat && (
+        <button onClick={() => setDeschis(false)} className="flex-1 rounded-full border-2 border-pink-200 bg-white py-2 text-sm font-semibold text-pink-500">
+          Renunță
+        </button>
+      )}
+      <button
+        onClick={salveaza}
+        disabled={seSalveaza || alese.length === 0}
+        className="flex-1 rounded-full bg-gradient-to-r from-pink-400 to-rose-400 py-2 text-sm font-semibold text-white shadow-md shadow-pink-200 disabled:opacity-50"
+      >
+        {seSalveaza ? "Se salvează…" : alese.length === 0 ? "Bifează un șantier" : "Salvează legătura"}
+      </button>
+    </div>
+  );
+
   return (
     <div className="rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-sm shadow-pink-100 backdrop-blur-sm">
       <p className="font-semibold text-rose-700">Cu ce șantier din pontaj se leagă acesta?</p>
-      <p className="mb-3 text-xs text-pink-400">Bifează unul sau mai multe. Costurile lor (oameni, utilaje, motorină) se adună aici.</p>
+      <p className="mb-3 text-xs text-pink-400">Bifează unul sau mai multe, apoi apasă „Salvează legătura”. Costurile lor (oameni, utilaje, motorină) se adună aici.</p>
+      <div className="mb-3">{butoane}</div>
+      {!lista && !eroareLista && <p className="text-sm text-pink-400">Se aduce lista din pontaj…</p>}
+      {eroareLista && <p className="text-sm text-red-600">{eroareLista}</p>}
       <div className="flex flex-col gap-1.5">
-        {(raspuns.lista?.santiere ?? []).map((n) => (
+        {(lista ?? []).map((n) => (
           <label key={n} className="flex items-center gap-2 rounded-xl border border-pink-100 bg-white/70 px-3 py-2 text-sm text-rose-800">
             <input
               type="checkbox"
@@ -103,20 +142,7 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
           </label>
         ))}
       </div>
-      <div className="mt-3 flex gap-2">
-        {raspuns.configurat && (
-          <button onClick={() => setDeschis(false)} className="flex-1 rounded-full border-2 border-pink-200 py-2 text-sm font-semibold text-pink-500">
-            Renunță
-          </button>
-        )}
-        <button
-          onClick={salveaza}
-          disabled={seSalveaza || alese.length === 0}
-          className="flex-1 rounded-full bg-gradient-to-r from-pink-400 to-rose-400 py-2 text-sm font-semibold text-white shadow-md shadow-pink-200 disabled:opacity-50"
-        >
-          {seSalveaza ? "Se salvează…" : "Salvează legătura"}
-        </button>
-      </div>
+      <div className="sticky bottom-3 mt-3 rounded-full bg-white/90 p-1 shadow-lg shadow-pink-200 backdrop-blur-sm">{butoane}</div>
     </div>
   );
 }
@@ -151,13 +177,13 @@ export function CosturiInterne({
   raspuns: RaspunsCosturi | null;
   incarcare: boolean;
   eroare: string | null;
-  reincarca: () => void;
+  reincarca: (reset?: boolean) => void;
 }) {
   if (eroare) {
     return (
       <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
         <p>Nu am putut aduce datele din pontaj: {eroare}</p>
-        <button onClick={reincarca} className="mt-2 font-semibold underline">
+        <button onClick={() => reincarca()} className="mt-2 font-semibold underline">
           Reîncearcă
         </button>
       </div>
@@ -169,8 +195,11 @@ export function CosturiInterne({
   if (!raspuns.configurat) {
     return <Legatura raspuns={raspuns} santierId={santierId} reincarca={reincarca} deschisImplicit />;
   }
+  if (!raspuns.costuri) {
+    return <p className="rounded-2xl bg-white/70 p-4 text-center text-sm text-pink-400">Se aduc datele din pontaj…</p>;
+  }
 
-  const c = raspuns.costuri!;
+  const c = raspuns.costuri;
   const zileOameni = c.oameni.reduce((s, o) => s + o.zile, 0);
 
   return (

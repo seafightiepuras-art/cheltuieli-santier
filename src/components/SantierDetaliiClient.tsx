@@ -62,7 +62,10 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
   const [incarcareCosturi, setIncarcareCosturi] = useState(true);
   const [eroareCosturi, setEroareCosturi] = useState<string | null>(null);
   const [versiuneCosturi, setVersiuneCosturi] = useState(0);
-  const reincarcaCosturi = useCallback(() => setVersiuneCosturi((v) => v + 1), []);
+  const reincarcaCosturi = useCallback((reset?: boolean) => {
+    if (reset) setCosturi(null); // după schimbarea legăturii, nu lăsăm pe ecran răspunsul vechi
+    setVersiuneCosturi((v) => v + 1);
+  }, []);
 
   useEffect(() => {
     let anulat = false;
@@ -82,6 +85,20 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
       anulat = true;
     };
   }, [santier.id, lunaAleasa, versiuneCosturi]);
+
+  // Lista rămâne pe ecran și se actualizează singură cu pontajul și alimentările:
+  // la revenirea în aplicație și, cât timp pagina e deschisă, din minut în minut.
+  useEffect(() => {
+    const actualizeaza = () => {
+      if (document.visibilityState === "visible") reincarcaCosturi();
+    };
+    const interval = setInterval(actualizeaza, 60000);
+    document.addEventListener("visibilitychange", actualizeaza);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", actualizeaza);
+    };
+  }, [reincarcaCosturi]);
 
   const luniDisponibile = useMemo(() => {
     const set = new Set<string>();
