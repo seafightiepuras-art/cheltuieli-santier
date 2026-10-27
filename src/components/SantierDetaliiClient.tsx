@@ -4,18 +4,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CATEGORII } from "@/lib/types";
-import type { Aviz, Moneda, Santier } from "@/lib/types";
+import type { Aviz, Santier } from "@/lib/types";
 import type { RaspunsCosturi } from "@/lib/costuri-tipuri";
+import type { RaspunsFacturiPrimite } from "@/lib/facturi-tipuri";
+import { calculeazaFisa, faraTvaEmisa, type FisaMoneda } from "@/lib/fisa";
 import { formateazaData, formateazaSuma } from "@/lib/format";
-import { SumaAnimata } from "@/components/SumaAnimata";
 import { CosturiInterne } from "@/components/CosturiInterne";
-import { avizAreProduseFaraPret, calculeazaTotalePeCategorie, calculeazaTotalePeMoneda, totalAviz } from "@/lib/calcule";
+import { FacturiPrimiteTab } from "@/components/FacturiPrimiteTab";
+import { avizAreProduseFaraPret, calculeazaTotalePeCategorie, totalAviz } from "@/lib/calcule";
 
-type Tab = "avize" | "facturi" | "costuri";
+type Tab = "avize" | "primite" | "emise" | "oameni";
 
 function lunaDinData(data: string | null): string | null {
-  if (!data) return null;
-  return data.slice(0, 7); // "YYYY-MM"
+  return data ? data.slice(0, 7) : null; // "YYYY-MM"
 }
 
 function etichetaLuna(luna: string): string {
@@ -24,27 +25,86 @@ function etichetaLuna(luna: string): string {
   return nume.charAt(0).toUpperCase() + nume.slice(1);
 }
 
-function Rand({ eticheta, suma, moneda, subtil = false, semn }: { eticheta: string; suma: number; moneda: Moneda; subtil?: boolean; semn?: "+" }) {
+function Kpi({ eticheta, valoare, nota, ton }: { eticheta: string; valoare: string; nota?: string; ton?: "pozitiv" | "negativ" }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className={subtil ? "text-sm text-pink-400" : "text-sm text-rose-500"}>{eticheta}</span>
-      <span className={subtil ? "text-sm font-medium text-rose-600" : "font-semibold text-rose-700"}>
-        {semn}
-        <SumaAnimata suma={suma} moneda={moneda} />
-      </span>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{eticheta}</p>
+      <p className={`mt-1 text-2xl font-bold tabular-nums ${ton === "pozitiv" ? "text-emerald-700" : ton === "negativ" ? "text-red-700" : "text-slate-900"}`}>{valoare}</p>
+      {nota && <p className="mt-0.5 text-xs text-slate-500">{nota}</p>}
     </div>
   );
 }
 
-function Diferenta({ eticheta, valoare, moneda }: { eticheta: string; valoare: number; moneda: Moneda }) {
-  const pozitiv = valoare >= 0;
+/** Tabelul costurilor pe categorii, cu și fără TVA, urmat de facturat și marjă. */
+function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
+  const m = fisa.moneda;
+  const total = fisa.totalFaraTva || 1;
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 ${pozitiv ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
-      <span className="text-sm font-semibold">{eticheta}</span>
-      <span className="text-lg font-bold">
-        {pozitiv ? "+" : "−"}
-        <SumaAnimata suma={Math.abs(valoare)} moneda={moneda} />
-      </span>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-sm">
+          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-2.5">Cheltuieli {m}</th>
+              <th className="px-4 py-2.5 text-right">Cu TVA</th>
+              <th className="px-4 py-2.5 text-right">Fără TVA</th>
+              <th className="w-28 px-4 py-2.5 text-right">% din total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {fisa.linii.map((l) => {
+              const pct = (l.faraTva / total) * 100;
+              return (
+                <tr key={l.cheie}>
+                  <td className="px-4 py-2.5">
+                    <p className="font-medium text-slate-900">
+                      {l.eticheta}
+                      {l.nr !== undefined && l.nr > 0 && <span className="ml-1.5 text-xs font-normal text-slate-400">({l.nr})</span>}
+                    </p>
+                    {l.nota && <p className="text-xs text-slate-500">{l.nota}</p>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">{formateazaSuma(l.cuTva, m)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">
+                    {formateazaSuma(l.faraTva, m)}
+                    {l.estimat && <span className="ml-1 text-xs text-slate-400" title="TVA-ul avizelor nu e păstrat separat: estimat cu 21%">est.</span>}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="w-10 text-right text-xs tabular-nums text-slate-500">{pct.toFixed(0)}%</span>
+                      <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-slate-700" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="border-t-2 border-slate-200 text-sm">
+            <tr className="bg-slate-50 font-bold text-slate-900">
+              <td className="px-4 py-3">TOTAL CHELTUIT</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalCuTva, m)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalFaraTva, m)}</td>
+              <td />
+            </tr>
+            <tr className="text-slate-700">
+              <td className="px-4 py-2.5 font-medium">Facturat (emis)</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva, m)}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatFaraTva, m)}</td>
+              <td />
+            </tr>
+            <tr className={`font-bold ${fisa.marja >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+              <td className="px-4 py-3">MARJĂ (facturat − cheltuit, fără TVA)</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva - fisa.totalCuTva, m)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">
+                {fisa.marja >= 0 ? "+" : "−"}
+                {formateazaSuma(Math.abs(fisa.marja), m)}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums">{fisa.marjaProcent !== null ? `${fisa.marjaProcent.toFixed(1).replace(".", ",")}%` : "—"}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
@@ -57,7 +117,7 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
   const [seSterge, setSeSterge] = useState<string | null>(null);
   const [seStergeFactura, setSeStergeFactura] = useState<string | null>(null);
 
-  // Costurile din pontaj (manoperă, utilaje, motorină)
+  // Costurile din pontaj (oameni, utilaje, motorină)
   const [costuri, setCosturi] = useState<RaspunsCosturi | null>(null);
   const [incarcareCosturi, setIncarcareCosturi] = useState(true);
   const [eroareCosturi, setEroareCosturi] = useState<string | null>(null);
@@ -66,6 +126,12 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
     if (reset) setCosturi(null); // după schimbarea legăturii, nu lăsăm pe ecran răspunsul vechi
     setVersiuneCosturi((v) => v + 1);
   }, []);
+
+  // Facturile primite alocate acestui șantier (din Centralizator Facturi) + ce avize acoperă
+  const [fp, setFp] = useState<RaspunsFacturiPrimite | null>(null);
+  const [incarcareFp, setIncarcareFp] = useState(true);
+  const [eroareFp, setEroareFp] = useState<string | null>(null);
+  const [versiuneFp, setVersiuneFp] = useState(0);
 
   useEffect(() => {
     let anulat = false;
@@ -86,11 +152,32 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
     };
   }, [santier.id, lunaAleasa, versiuneCosturi]);
 
-  // Lista rămâne pe ecran și se actualizează singură cu pontajul și alimentările:
-  // la revenirea în aplicație și, cât timp pagina e deschisă, din minut în minut.
+  useEffect(() => {
+    let anulat = false;
+    setIncarcareFp(true);
+    setEroareFp(null);
+    const param = lunaAleasa === "toate" ? "" : `?luna=${lunaAleasa}`;
+    fetch(`/api/facturi-primite/${santier.id}${param}`, { cache: "no-store" })
+      .then(async (res) => {
+        const j = await res.json().catch(() => ({}));
+        if (anulat) return;
+        if (!res.ok) setEroareFp(j.eroare ?? "Eroare necunoscută.");
+        else setFp(j as RaspunsFacturiPrimite);
+      })
+      .catch(() => !anulat && setEroareFp("Nu am putut contacta serverul."))
+      .finally(() => !anulat && setIncarcareFp(false));
+    return () => {
+      anulat = true;
+    };
+  }, [santier.id, lunaAleasa, versiuneFp]);
+
+  // Cifrele se actualizează singure cu pontajul și facturile: la revenirea în aplicație și din minut în minut.
   useEffect(() => {
     const actualizeaza = () => {
-      if (document.visibilityState === "visible") reincarcaCosturi();
+      if (document.visibilityState === "visible") {
+        reincarcaCosturi();
+        setVersiuneFp((v) => v + 1);
+      }
     };
     const interval = setInterval(actualizeaza, 60000);
     document.addEventListener("visibilitychange", actualizeaza);
@@ -106,13 +193,27 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
       const l = lunaDinData(a.data_aviz);
       if (l) set.add(l);
     }
+    for (const f of fp?.facturi ?? []) {
+      const l = lunaDinData(f.data);
+      if (l) set.add(l);
+    }
     return Array.from(set).sort().reverse();
-  }, [avize, emise]);
+  }, [avize, emise, fp]);
 
   const dinLuna = (a: Aviz) => lunaAleasa === "toate" || lunaDinData(a.data_aviz) === lunaAleasa;
 
-  // Pentru totaluri se iau toate avizele lunii; căutarea filtrează doar lista de avize.
+  // Avizele acoperite de o factură alocată ACESTUI șantier nu se mai numără (se numără factura).
+  const acopera = fp?.acopera ?? {};
+  const facturiAlocate = fp?.facturi ?? [];
+  const avizeAcoperite = useMemo(() => {
+    const idFacturiAlocate = new Set(facturiAlocate.map((f) => f.id));
+    const s = new Map<string, string>(); // avizId -> facturaId
+    for (const [fid, lista] of Object.entries(acopera)) if (idFacturiAlocate.has(fid)) for (const a of lista) s.set(a, fid);
+    return s;
+  }, [acopera, facturiAlocate]);
+
   const avizeLuna = useMemo(() => avize.filter(dinLuna), [avize, lunaAleasa]); // eslint-disable-line react-hooks/exhaustive-deps
+  const avizeNefacturate = useMemo(() => avizeLuna.filter((a) => !avizeAcoperite.has(a.id)), [avizeLuna, avizeAcoperite]);
   const emiseFiltrate = useMemo(() => emise.filter(dinLuna), [emise, lunaAleasa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const avizeFiltrate = useMemo(() => {
@@ -123,27 +224,18 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
 
   const totalePeCategorie = useMemo(() => {
     const etichetaCategorie = new Map(CATEGORII.map((c) => [c.valoare, c.eticheta]));
-    return calculeazaTotalePeCategorie(avizeLuna).map((t) => ({ ...t, eticheta: etichetaCategorie.get(t.categorie) ?? t.categorie }));
-  }, [avizeLuna]);
-  const totalAvizePeMoneda = useMemo(() => calculeazaTotalePeMoneda(avizeLuna), [avizeLuna]);
+    return calculeazaTotalePeCategorie(avizeNefacturate).map((t) => ({ ...t, eticheta: etichetaCategorie.get(t.categorie) ?? t.categorie }));
+  }, [avizeNefacturate]);
+  const avizeFaraPret = avizeNefacturate.filter(avizAreProduseFaraPret);
 
-  const avizeFaraPret = avizeLuna.filter(avizAreProduseFaraPret);
-
-  // Cheltuit vs facturat, separat pe monedă (RON și EUR nu se adună); ambele cu TVA.
-  // Costurile interne din pontaj sunt în RON și se adaugă doar la RON.
   const interne = costuri?.configurat && costuri.costuri ? costuri.costuri : null;
-  const comparatie = useMemo(() => {
-    const cheltuit = new Map(totalAvizePeMoneda.map((t) => [t.moneda, t.total]));
-    const facturat = new Map(calculeazaTotalePeMoneda(emiseFiltrate).map((t) => [t.moneda, t.total]));
-    const monede = Array.from(new Set<Moneda>([...Array.from(cheltuit.keys()), ...Array.from(facturat.keys()), "RON"])).sort();
-    return monede.map((moneda) => {
-      const avizeSuma = cheltuit.get(moneda) ?? 0;
-      const interneSuma = moneda === "RON" ? interne?.totalInterne ?? 0 : 0;
-      const fct = facturat.get(moneda) ?? 0;
-      return { moneda, avize: avizeSuma, interne: interneSuma, totalReal: avizeSuma + interneSuma, facturat: fct };
-    });
-  }, [totalAvizePeMoneda, emiseFiltrate, interne]);
-  const maiMulteMonede = comparatie.filter((c) => c.avize > 0 || c.facturat > 0 || c.interne > 0).length > 1;
+  const fise = useMemo(
+    () => calculeazaFisa({ avizeNefacturate, facturi: facturiAlocate, emise: emiseFiltrate, interne }),
+    [avizeNefacturate, facturiAlocate, emiseFiltrate, interne]
+  );
+  const fisaRon = fise.find((f) => f.moneda === "RON") ?? fise[0];
+  const alteMonede = fise.filter((f) => f.moneda !== "RON" && (f.totalCuTva > 0 || f.facturatCuTva > 0));
+  const nealocatRon = (fp?.nealocat ?? []).find((n) => n.moneda === "RON");
 
   async function stergeAviz(id: string) {
     if (!confirm("Ștergi acest aviz? Nu se poate anula.")) return;
@@ -171,34 +263,26 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
 
   const taburi: { id: Tab; eticheta: string; nr?: number }[] = [
     { id: "avize", eticheta: "Avize", nr: avizeLuna.length },
-    { id: "facturi", eticheta: "Facturi emise", nr: emiseFiltrate.length },
-    { id: "costuri", eticheta: "Manoperă și utilaje" },
+    { id: "primite", eticheta: "Facturi primite", nr: facturiAlocate.length },
+    { id: "emise", eticheta: "Facturi emise", nr: emiseFiltrate.length },
+    { id: "oameni", eticheta: "Oameni și utilaje", nr: interne?.nrOameni },
   ];
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-5 p-4 pb-28">
-      <header className="flex items-center justify-between pt-6">
+    <main className="fisa-santier mx-auto flex max-w-5xl flex-col gap-5 p-4 pb-28 md:p-6">
+      {/* ---------- antet ---------- */}
+      <header className="flex flex-wrap items-end justify-between gap-3 pt-2">
         <div>
-          <Link href="/" className="text-sm font-semibold text-pink-500">
+          <Link href="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">
             ← Toate șantierele
           </Link>
-          <h1 className="titlu-sclipitor font-fancy text-3xl">{santier.nume}</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{santier.nume}</h1>
+          <p className="text-sm text-slate-500">Fișa șantierului{lunaAleasa !== "toate" ? ` · ${etichetaLuna(lunaAleasa)}` : " · toată perioada"}</p>
         </div>
-        <a href={`/api/export?santier_id=${santier.id}`} className="rounded-full border-2 border-pink-300 px-3 py-2 text-sm font-semibold text-pink-600">
-          Export CSV ↓
-        </a>
-      </header>
-
-      {/* ---------- Rezumat: cât am băgat vs cât scot ---------- */}
-      <div className="apare rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-pink-400">Cât am băgat vs cât scot</p>
-            <p className="text-xs text-pink-300">cu TVA{lunaAleasa !== "toate" ? ` · ${etichetaLuna(lunaAleasa)}` : ""}</p>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
           {luniDisponibile.length > 0 && (
             <select
-              className="rounded-full border border-pink-200 bg-white/85 p-2 px-3 text-sm text-rose-800"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 shadow-sm"
               value={lunaAleasa}
               onChange={(e) => setLunaAleasa(e.target.value)}
               aria-label="Alege luna"
@@ -211,75 +295,82 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
               ))}
             </select>
           )}
+          <a href={`/api/export?santier_id=${santier.id}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
+            Export CSV
+          </a>
         </div>
+      </header>
 
-        {comparatie
-          .filter((c) => c.moneda === "RON" || c.avize > 0 || c.facturat > 0)
-          .map((c) => {
-            const areInterne = c.interne > 0;
-            return (
-              <div key={c.moneda} className="mt-4 flex flex-col gap-2">
-                {maiMulteMonede && <p className="text-xs font-bold uppercase tracking-wide text-pink-400">{c.moneda}</p>}
-                <Rand eticheta="Băgat (avize)" suma={c.avize} moneda={c.moneda} />
-                {areInterne && <Rand eticheta="Oameni, utilaje, motorină" suma={c.interne} moneda={c.moneda} semn="+" />}
-                {areInterne && (
-                  <div className="border-t border-pink-100 pt-2">
-                    <Rand eticheta="Total băgat (cu oameni, utilaje, motorină)" suma={c.totalReal} moneda={c.moneda} />
-                  </div>
-                )}
-                <Rand eticheta="Scos (facturi emise)" suma={c.facturat} moneda={c.moneda} />
-                <div className="mt-1 flex flex-col gap-1.5">
-                  <Diferenta eticheta={areInterne ? "Diferență, doar avize" : "Diferență (scos − băgat)"} valoare={c.facturat - c.avize} moneda={c.moneda} />
-                  {areInterne && <Diferenta eticheta="Diferență, cu oameni, utilaje, motorină" valoare={c.facturat - c.totalReal} moneda={c.moneda} />}
-                </div>
+      {/* ---------- cifre principale ---------- */}
+      {fisaRon && (
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi eticheta="Cheltuit (fără TVA)" valoare={formateazaSuma(fisaRon.totalFaraTva, "RON")} nota={`${formateazaSuma(fisaRon.totalCuTva, "RON")} cu TVA`} />
+          <Kpi eticheta="Facturat (fără TVA)" valoare={formateazaSuma(fisaRon.facturatFaraTva, "RON")} nota={`${formateazaSuma(fisaRon.facturatCuTva, "RON")} cu TVA`} />
+          <Kpi
+            eticheta="Marjă"
+            valoare={`${fisaRon.marja >= 0 ? "+" : "−"}${formateazaSuma(Math.abs(fisaRon.marja), "RON")}`}
+            ton={fisaRon.marja >= 0 ? "pozitiv" : "negativ"}
+            nota="facturat − cheltuit, fără TVA"
+          />
+          <Kpi
+            eticheta="Marjă %"
+            valoare={fisaRon.marjaProcent !== null ? `${fisaRon.marjaProcent.toFixed(1).replace(".", ",")}%` : "—"}
+            ton={fisaRon.marjaProcent !== null ? (fisaRon.marja >= 0 ? "pozitiv" : "negativ") : undefined}
+            nota="din valoarea facturată"
+          />
+        </section>
+      )}
+
+      {/* ---------- defalcare ---------- */}
+      {fisaRon && <TabelCosturi fisa={fisaRon} />}
+      {alteMonede.map((f) => (
+        <TabelCosturi key={f.moneda} fisa={f} />
+      ))}
+
+      {!interne && !incarcareCosturi && !eroareCosturi && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Șantierul nu e legat de pontaj, deci oamenii, utilajele și motorina nu sunt incluse. Leagă-l din fila „Oameni și utilaje”.
+        </p>
+      )}
+      {eroareCosturi && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">Nu am putut aduce costurile din pontaj: {eroareCosturi}</p>}
+      {avizeFaraPret.length > 0 && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {avizeFaraPret.length} {avizeFaraPret.length === 1 ? "aviz nu are" : "avize nu au"} preț completat — cheltuiala reală e mai mare.
+        </p>
+      )}
+      {nealocatRon && nealocatRon.cuTva > 0 && (
+        <p className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-sm">
+          <span className="font-semibold text-slate-800">Cheltuieli generale (nealocate pe șantiere):</span> {formateazaSuma(nealocatRon.cuTva, "RON")} cu TVA ·{" "}
+          {formateazaSuma(nealocatRon.faraTva, "RON")} fără TVA ({nealocatRon.nr} {nealocatRon.nr === 1 ? "factură" : "facturi"}). Nu intră în costul niciunui șantier.
+        </p>
+      )}
+
+      {totalePeCategorie.length > 0 && (
+        <details className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-800">Avizele nefacturate, pe categorii</summary>
+          <div className="mt-3 flex flex-col gap-2">
+            {totalePeCategorie.map((c) => (
+              <div key={`${c.moneda}-${c.categorie}`} className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">{c.eticheta}</span>
+                <span className="font-medium tabular-nums text-slate-900">{formateazaSuma(c.total, c.moneda)}</span>
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </details>
+      )}
 
-        {avizeFaraPret.length > 0 && (
-          <p className="mt-3 rounded-xl bg-amber-50 p-2.5 text-xs text-amber-800">
-            ⚠️ {avizeFaraPret.length} {avizeFaraPret.length === 1 ? "aviz nu are" : "avize nu au"} preț completat — cheltuiala reală e mai mare.
-          </p>
-        )}
-
-        {totalePeCategorie.length > 0 && (
-          <details className="mt-3 border-t border-pink-100 pt-2">
-            <summary className="cursor-pointer text-sm font-medium text-pink-500">Pe categorii de cheltuieli</summary>
-            <div className="mt-2 flex flex-col gap-2">
-              {totalePeCategorie.map((c, i) => {
-                const totalMoneda = totalAvizePeMoneda.find((t) => t.moneda === c.moneda)?.total ?? 0;
-                const pondere = totalMoneda > 0 ? Math.max(3, Math.min(100, (c.total / totalMoneda) * 100)) : 0;
-                return (
-                  <div key={`${c.moneda}-${c.categorie}`}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-rose-500">{c.eticheta}</span>
-                      <span className="font-semibold text-rose-700">{formateazaSuma(c.total, c.moneda)}</span>
-                    </div>
-                    <div className="bara-roz mt-1">
-                      <i style={{ "--w": `${pondere.toFixed(1)}%`, animationDelay: `${i * 90}ms` } as React.CSSProperties} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </details>
-        )}
-      </div>
-
-      {/* ---------- File: avize / facturi emise / manoperă și utilaje ---------- */}
-      <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-pink-200 bg-white/70 p-1.5 backdrop-blur-sm" role="tablist">
+      {/* ---------- file ---------- */}
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm" role="tablist">
         {taburi.map((t) => (
           <button
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-xl px-2 py-2 text-center text-sm font-semibold leading-tight transition-colors ${
-              tab === t.id ? "bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-md shadow-pink-200" : "text-pink-500"
-            }`}
+            className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${tab === t.id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
           >
             {t.eticheta}
-            {t.nr !== undefined && <span className={`ml-1 text-xs ${tab === t.id ? "text-pink-100" : "text-pink-300"}`}>{t.nr}</span>}
+            {t.nr !== undefined && <span className={`ml-1.5 text-xs ${tab === t.id ? "text-slate-300" : "text-slate-400"}`}>{t.nr}</span>}
           </button>
         ))}
       </div>
@@ -287,50 +378,49 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
       {tab === "avize" && (
         <div className="flex flex-col gap-2">
           <input
-            className="rounded-full border border-pink-200 bg-white/85 p-2 px-4 text-sm text-rose-800 placeholder:text-pink-300 focus:outline-none"
-            placeholder="🔍 Caută după nr. aviz sau furnizor…"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            placeholder="Caută după nr. aviz sau furnizor…"
             value={cautare}
             onChange={(e) => setCautare(e.target.value)}
           />
-          {avizeFiltrate.length === 0 && (
-            <p className="rounded-2xl border-2 border-dashed border-pink-300 bg-white/70 p-6 text-center text-sm text-pink-400 backdrop-blur-sm">Niciun aviz aici 🌸</p>
-          )}
-          {avizeFiltrate.map((a, i) => {
+          {avizeFiltrate.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">Niciun aviz aici.</p>}
+          {avizeFiltrate.map((a) => {
             const total = totalAviz(a);
             const faraPret = avizAreProduseFaraPret(a);
+            const facturaId = avizeAcoperite.get(a.id);
+            const factura = facturaId ? facturiAlocate.find((f) => f.id === facturaId) : undefined;
             return (
-              <div
-                key={a.id}
-                style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}
-                className="apare card-roz rounded-2xl border border-pink-200 bg-white/85 p-3 shadow-sm shadow-pink-100 backdrop-blur-sm"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-rose-800">{a.furnizor}</p>
-                    <p className="text-xs text-pink-400">
+              <div key={a.id} className={`rounded-xl border bg-white p-4 shadow-sm ${facturaId ? "border-slate-200 opacity-70" : "border-slate-200"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{a.furnizor}</p>
+                    <p className="text-sm text-slate-500">
                       {a.numar_aviz ? `Aviz ${a.numar_aviz} · ` : ""}
                       {formateazaData(a.data_aviz)}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     {faraPret ? (
-                      <span className="text-xs font-semibold text-amber-600">fără preț</span>
+                      <span className="text-xs font-semibold text-amber-700">fără preț</span>
                     ) : (
-                      <span className="rounded-full bg-pink-100 px-2 py-0.5 font-semibold text-pink-600">{formateazaSuma(total, a.moneda)}</span>
+                      <span className="text-lg font-bold tabular-nums text-slate-900">{formateazaSuma(total, a.moneda)}</span>
                     )}
+                    <p className={`text-xs font-semibold ${facturaId ? "text-emerald-700" : "text-slate-400"}`}>
+                      {facturaId ? `facturat${factura?.numar ? ` · fact. ${factura.numar}` : ""}` : "nefacturat"}
+                    </p>
                   </div>
                 </div>
-                {a.produse && a.produse.length > 0 && <p className="mt-1 text-xs text-pink-400">{a.produse.map((p) => p.denumire).join(", ")}</p>}
-                <div className="mt-2 flex gap-3 text-xs">
+                {a.produse && a.produse.length > 0 && <p className="mt-1 text-sm text-slate-500">{a.produse.map((p) => p.denumire).join(", ")}</p>}
+                <div className="mt-2 flex gap-4 text-sm">
                   {a.poza_url && (
-                    <a href={a.poza_url} target="_blank" rel="noopener noreferrer" className="font-medium text-pink-500 underline">
+                    <a href={a.poza_url} target="_blank" rel="noopener noreferrer" className="font-medium text-slate-700 underline">
                       Vezi poza
                     </a>
                   )}
-                  <Link href={`/aviz/${a.id}/editeaza`} className="font-medium text-pink-500 underline">
+                  <Link href={`/aviz/${a.id}/editeaza`} className="font-medium text-slate-700 underline">
                     Editează
                   </Link>
-                  <button onClick={() => stergeAviz(a.id)} disabled={seSterge === a.id} className="font-medium text-red-400 underline disabled:opacity-50">
+                  <button onClick={() => stergeAviz(a.id)} disabled={seSterge === a.id} className="font-medium text-red-600 underline disabled:opacity-50">
                     {seSterge === a.id ? "Se șterge…" : "Șterge"}
                   </button>
                 </div>
@@ -340,51 +430,55 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
         </div>
       )}
 
-      {tab === "facturi" && (
+      {tab === "primite" && (
+        <FacturiPrimiteTab
+          facturi={facturiAlocate}
+          avizeSantier={avize}
+          acopera={acopera}
+          nealocat={fp?.nealocat ?? []}
+          incarcare={incarcareFp}
+          eroare={eroareFp}
+          onSchimbat={() => setVersiuneFp((v) => v + 1)}
+        />
+      )}
+
+      {tab === "emise" && (
         <div className="flex flex-col gap-2">
-          <Link
-            href={`/factura-emisa?santier=${santier.id}`}
-            className="rounded-full bg-gradient-to-r from-pink-400 to-rose-400 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-pink-200"
-          >
-            🧾 Adaugă factură emisă (poză sau PDF)
+          <Link href={`/factura-emisa?santier=${santier.id}`} className="rounded-lg bg-slate-900 py-2.5 text-center text-sm font-semibold text-white shadow-sm">
+            Adaugă factură emisă (poză sau PDF)
           </Link>
-          {emiseFiltrate.length === 0 && (
-            <p className="rounded-2xl border-2 border-dashed border-pink-300 bg-white/70 p-6 text-center text-sm text-pink-400 backdrop-blur-sm">
-              Nicio factură emisă aici încă.
-            </p>
-          )}
-          {emiseFiltrate.map((f, i) => {
+          {emiseFiltrate.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">Nicio factură emisă aici încă.</p>}
+          {emiseFiltrate.map((f) => {
             const cu = totalAviz(f);
-            const fara = f.produse?.[0]?.pret_unitar;
+            const fara = faraTvaEmisa(f);
             return (
-              <div
-                key={f.id}
-                style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}
-                className="apare card-roz rounded-2xl border border-pink-200 bg-white/85 p-3 shadow-sm shadow-pink-100 backdrop-blur-sm"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-rose-800">{f.furnizor}</p>
-                    <p className="text-xs text-pink-400">
+              <div key={f.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{f.furnizor}</p>
+                    <p className="text-sm text-slate-500">
                       {f.numar_aviz ? `Factura ${f.numar_aviz} · ` : ""}
                       {formateazaData(f.data_aviz)}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">{formateazaSuma(cu, f.moneda)}</span>
-                    {fara !== null && fara !== undefined && <p className="mt-1 text-xs text-pink-400">fără TVA {formateazaSuma(Number(fara), f.moneda)}</p>}
+                  <div className="shrink-0 text-right">
+                    <p className="text-lg font-bold tabular-nums text-slate-900">{formateazaSuma(cu, f.moneda)}</p>
+                    <p className="text-xs tabular-nums text-slate-500">
+                      fără TVA {formateazaSuma(fara.valoare, f.moneda)}
+                      {fara.estimat ? " (est.)" : ""}
+                    </p>
                   </div>
                 </div>
-                <div className="mt-2 flex gap-3 text-xs">
+                <div className="mt-2 flex gap-4 text-sm">
                   {f.poza_url && (
-                    <a href={f.poza_url} target="_blank" rel="noopener noreferrer" className="font-medium text-pink-500 underline">
+                    <a href={f.poza_url} target="_blank" rel="noopener noreferrer" className="font-medium text-slate-700 underline">
                       Vezi poza
                     </a>
                   )}
-                  <Link href={`/factura-emisa/${f.id}/editeaza`} className="font-medium text-pink-500 underline">
+                  <Link href={`/factura-emisa/${f.id}/editeaza`} className="font-medium text-slate-700 underline">
                     Editează
                   </Link>
-                  <button onClick={() => stergeFactura(f.id)} disabled={seStergeFactura === f.id} className="font-medium text-red-400 underline disabled:opacity-50">
+                  <button onClick={() => stergeFactura(f.id)} disabled={seStergeFactura === f.id} className="font-medium text-red-600 underline disabled:opacity-50">
                     {seStergeFactura === f.id ? "Se șterge…" : "Șterge"}
                   </button>
                 </div>
@@ -394,14 +488,14 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
         </div>
       )}
 
-      {tab === "costuri" && (
+      {tab === "oameni" && (
         <CosturiInterne santierId={santier.id} raspuns={costuri} incarcare={incarcareCosturi} eroare={eroareCosturi} reincarca={reincarcaCosturi} />
       )}
 
       {tab === "avize" && (
         <Link
           href={`/adauga?santier=${santier.id}`}
-          className="fab fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-3xl text-white shadow-lg shadow-pink-300"
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-3xl text-white shadow-lg"
           aria-label="Adaugă aviz"
         >
           +

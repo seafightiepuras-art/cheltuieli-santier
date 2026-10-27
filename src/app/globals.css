@@ -90,3 +90,21 @@ body {
   .bara-roz > i { animation: none; width: var(--w); }
   .card-roz::after { display: none; }
 }
+
+/* ---------- fișa șantierului: aspect sobru, fără fundal roz și fără animații ---------- */
+body:has(.fisa-santier) {
+  background-color: #f4f5f7;
+  color: #0f172a;
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+}
+body:has(.fisa-santier) .fundal-viu,
+body:has(.fisa-santier) .particula,
+body:has(.fisa-santier) .bara-nav {
+  display: none;
+}
+.fisa-santier .apare {
+  animation: none;
+}
+.fisa-santier .bara-roz > i {
+  background: #334155;
+}
