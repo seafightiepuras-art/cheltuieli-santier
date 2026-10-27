@@ -43,13 +43,13 @@ function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm sm:min-w-[520px]">
+        <table className="w-full text-xs sm:text-sm sm:min-w-[520px]">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-2.5">Cheltuieli {m}</th>
-              <th className="px-4 py-2.5 text-right">Cu TVA</th>
-              <th className="px-4 py-2.5 text-right">Fără TVA</th>
-              <th className="hidden w-28 px-4 py-2.5 text-right sm:table-cell">% din total</th>
+              <th className="px-2 sm:px-4 py-2.5">Cheltuieli {m}</th>
+              <th className="px-2 sm:px-4 py-2.5 text-right">Cu TVA</th>
+              <th className="px-2 sm:px-4 py-2.5 text-right">Fără TVA</th>
+              <th className="hidden w-28 px-2 sm:px-4 py-2.5 text-right sm:table-cell">% din total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -57,19 +57,19 @@ function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
               const pct = (l.faraTva / total) * 100;
               return (
                 <tr key={l.cheie}>
-                  <td className="px-4 py-2.5">
+                  <td className="px-2 sm:px-4 py-2.5">
                     <p className="font-medium text-slate-900">
                       {l.eticheta}
                       {l.nr !== undefined && l.nr > 0 && <span className="ml-1.5 text-xs font-normal text-slate-400">({l.nr})</span>}
                     </p>
                     {l.nota && <p className="text-xs text-slate-500">{l.nota}</p>}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">{formateazaSuma(l.cuTva, m)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">
+                  <td className="px-2 sm:px-4 py-2.5 text-right tabular-nums text-slate-900">{formateazaSuma(l.cuTva, m)}</td>
+                  <td className="px-2 sm:px-4 py-2.5 text-right tabular-nums text-slate-900">
                     {formateazaSuma(l.faraTva, m)}
                     {l.estimat && <span className="ml-1 text-xs text-slate-400" title="TVA-ul avizelor nu e păstrat separat: estimat cu 21%">est.</span>}
                   </td>
-                  <td className="hidden px-4 py-2.5 sm:table-cell">
+                  <td className="hidden px-2 sm:px-4 py-2.5 sm:table-cell">
                     <div className="flex items-center justify-end gap-2">
                       <span className="w-10 text-right text-xs tabular-nums text-slate-500">{pct.toFixed(0)}%</span>
                       <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
@@ -83,25 +83,25 @@ function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
           </tbody>
           <tfoot className="border-t-2 border-slate-200 text-sm">
             <tr className="bg-slate-50 font-bold text-slate-900">
-              <td className="px-4 py-3">TOTAL CHELTUIT</td>
-              <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalCuTva, m)}</td>
-              <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalFaraTva, m)}</td>
+              <td className="px-2 sm:px-4 py-3">TOTAL CHELTUIT</td>
+              <td className="px-2 sm:px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalCuTva, m)}</td>
+              <td className="px-2 sm:px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalFaraTva, m)}</td>
               <td className="hidden sm:table-cell" />
             </tr>
             <tr className="text-slate-700">
-              <td className="px-4 py-2.5 font-medium">Facturat (emis)</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva, m)}</td>
-              <td className="px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatFaraTva, m)}</td>
+              <td className="px-2 sm:px-4 py-2.5 font-medium">Facturat (emis)</td>
+              <td className="px-2 sm:px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva, m)}</td>
+              <td className="px-2 sm:px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatFaraTva, m)}</td>
               <td className="hidden sm:table-cell" />
             </tr>
             <tr className={`font-bold ${fisa.marja >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
-              <td className="px-4 py-3">MARJĂ (facturat − cheltuit, fără TVA)</td>
-              <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva - fisa.totalCuTva, m)}</td>
-              <td className="px-4 py-3 text-right tabular-nums">
+              <td className="px-2 sm:px-4 py-3">MARJĂ (facturat − cheltuit, fără TVA)</td>
+              <td className="px-2 sm:px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva - fisa.totalCuTva, m)}</td>
+              <td className="px-2 sm:px-4 py-3 text-right tabular-nums">
                 {fisa.marja >= 0 ? "+" : "−"}
                 {formateazaSuma(Math.abs(fisa.marja), m)}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums">{fisa.marjaProcent !== null ? `${fisa.marjaProcent.toFixed(1).replace(".", ",")}%` : "—"}</td>
+              <td className="px-2 sm:px-4 py-3 text-right tabular-nums">{fisa.marjaProcent !== null ? `${fisa.marjaProcent.toFixed(1).replace(".", ",")}%` : "—"}</td>
             </tr>
           </tfoot>
         </table>
@@ -251,7 +251,8 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
   );
 
   // Luna închisă: se afișează cifrele înghețate, nu cele calculate acum.
-  const inchisa = lunaAleasa !== "toate" ? inchideri[lunaAleasa] : undefined;
+  // („toate” = șantierul încheiat în întregime)
+  const inchisa = inchideri[lunaAleasa];
   const fise = inchisa ? inchisa.fise : fiseLive;
   const ronLive = fiseLive.find((f) => f.moneda === "RON");
   const ronInghetat = inchisa?.fise.find((f) => f.moneda === "RON");
@@ -280,6 +281,32 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
     setSeInchide(false);
     if (!res.ok) return alert("Nu am putut redeschide luna.");
     setVersiuneInchideri((v) => v + 1);
+  }
+
+  async function incheieSantier() {
+    if (lunaAleasa !== "toate" || !dateComplete) return;
+    const mesaj = `Închizi șantierul ${santier.nume}? Cifrele finale (pe toată perioada) se îngheață, iar șantierul trece la coada listei și nu mai apare la alocarea facturilor. Îl poți redeschide oricând.${
+      interne ? "" : "\n\nAtenție: șantierul nu e legat de pontaj, deci oamenii, utilajele și motorina nu sunt incluse."
+    }`;
+    if (!confirm(mesaj)) return;
+    setSeInchide(true);
+    const salvat = await fetch("/api/inchideri", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ santierId: santier.id, luna: "toate", fise: fiseLive, nealocat: fp?.nealocat ?? [] }) });
+    const marcat = salvat.ok ? await fetch("/api/santiere", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: santier.id, activ: false }) }) : null;
+    setSeInchide(false);
+    if (!salvat.ok || !marcat?.ok) return alert("Nu am putut închide șantierul.");
+    setVersiuneInchideri((v) => v + 1);
+    router.refresh();
+  }
+
+  async function redeschideSantier() {
+    if (!confirm(`Redeschizi șantierul ${santier.nume}? Cifrele revin la cele calculate în timp real.`)) return;
+    setSeInchide(true);
+    const a = await fetch("/api/inchideri", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ santierId: santier.id, luna: "toate" }) });
+    const b = await fetch("/api/santiere", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: santier.id, activ: true }) });
+    setSeInchide(false);
+    if (!a.ok || !b.ok) return alert("Nu am putut redeschide șantierul.");
+    setVersiuneInchideri((v) => v + 1);
+    router.refresh();
   }
   const fisaRon = fise.find((f) => f.moneda === "RON") ?? fise[0];
   const alteMonede = fise.filter((f) => f.moneda !== "RON" && (f.totalCuTva > 0 || f.facturatCuTva > 0));
@@ -391,10 +418,40 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
         </section>
       )}
 
+      {/* ---------- închiderea șantierului ---------- */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">Închiderea șantierului</h2>
+        {santier.activ ? (
+          <>
+            <p className="mt-0.5 text-sm text-slate-500">Când lucrarea e gata, închizi șantierul: cifrele finale se îngheață, iar șantierul trece la coada listei și nu mai primește facturi la alocare.</p>
+            <div className="mt-3">
+              {lunaAleasa === "toate" ? (
+                <button type="button" onClick={incheieSantier} disabled={seInchide || !dateComplete} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  {seInchide ? "Se salvează…" : dateComplete ? "Închide șantierul" : "Se calculează…"}
+                </button>
+              ) : (
+                <button type="button" onClick={() => setLunaAleasa("toate")} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800">
+                  Arată toată perioada, ca să închizi șantierul
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-slate-800">
+              Șantier încheiat{inchideri["toate"] ? ` pe ${new Date(inchideri["toate"].inchisLa).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}` : ""}
+            </span>
+            <button type="button" onClick={redeschideSantier} disabled={seInchide} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-50">
+              Redeschide șantierul
+            </button>
+          </div>
+        )}
+      </section>
+
       {inchisa && (
         <div className="rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm text-slate-700">
           <p className="font-semibold text-slate-900">
-            Luna închisă pe {new Date(inchisa.inchisLa).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}
+            {lunaAleasa === "toate" ? "Șantier închis" : "Luna închisă"} pe {new Date(inchisa.inchisLa).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}
           </p>
           <p>Cifrele de mai jos sunt înghețate la momentul închiderii.</p>
           {modificatDupaInchidere && ronLive && ronInghetat && (

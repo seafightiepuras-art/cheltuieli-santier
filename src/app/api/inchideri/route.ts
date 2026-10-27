@@ -3,7 +3,8 @@ import { citesteInchideri, inchideLuna, redeschideLuna } from "@/lib/inchideri";
 
 export const dynamic = "force-dynamic";
 
-const LUNA = /^\d{4}-(0[1-9]|1[0-2])$/;
+// „toate” = șantierul încheiat în întregime (cifrele pe toată perioada)
+const LUNA = /^(\d{4}-(0[1-9]|1[0-2])|toate)$/;
 
 /** Lunile închise ale unui șantier. */
 export async function GET(req: Request) {

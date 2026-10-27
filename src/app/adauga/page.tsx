@@ -10,5 +10,8 @@ export default async function AdaugaAvizPage({ searchParams }: { searchParams: {
     searchParams.santier ? fetchSantier(searchParams.santier) : Promise.resolve(null),
   ]);
 
-  return <AdaugaAvizClient santiere={santiere} furnizoriCunoscuti={furnizoriCunoscuti} santierPreselectat={santierPreselectat} />;
+  // șantierele încheiate nu mai apar la alegere (decât dacă vii direct din fișa lui)
+  const deAles = santiere.filter((s) => s.activ !== false || s.id === searchParams.santier);
+
+  return <AdaugaAvizClient santiere={deAles}furnizoriCunoscuti={furnizoriCunoscuti} santierPreselectat={santierPreselectat} />;
 }

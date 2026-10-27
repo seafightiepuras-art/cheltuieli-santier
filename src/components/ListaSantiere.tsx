@@ -25,6 +25,16 @@ function Rand({ s }: { s: SantierLista }) {
     let anulat = false;
     const aduce = async () => {
       try {
+        // șantier încheiat: se arată cifrele finale înghețate, dacă există
+        if (!s.activ) {
+          const ri = await fetch(`/api/inchideri?santier=${s.id}`, { cache: "no-store" });
+          const ji = await ri.json().catch(() => ({}));
+          const inghetat = ji?.inchideri?.toate?.fise as FisaMoneda[] | undefined;
+          if (inghetat && inghetat.length > 0) {
+            if (!anulat) setStare({ fise: inghetat });
+            return;
+          }
+        }
         const [rc, rf] = await Promise.all([
           fetch(`/api/costuri-santier/${s.id}`, { cache: "no-store" }),
           fetch(`/api/facturi-primite/${s.id}`, { cache: "no-store" }),
@@ -57,7 +67,10 @@ function Rand({ s }: { s: SantierLista }) {
   return (
     <Link href={`/santier/${s.id}`} className={`block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300 ${!s.activ ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-3">
-        <h2 className="min-w-0 truncate text-base font-semibold text-slate-900">{s.nume}</h2>
+        <h2 className="min-w-0 truncate text-base font-semibold text-slate-900">
+          {s.nume}
+          {!s.activ && <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 align-middle text-xs font-medium text-slate-700">încheiat</span>}
+        </h2>
         <span className="shrink-0 text-slate-400">›</span>
       </div>
       {!stare && <p className="mt-2 text-sm text-slate-400">Se calculează…</p>}
