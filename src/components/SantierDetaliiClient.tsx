@@ -30,7 +30,7 @@ function Kpi({ eticheta, valoare, nota, ton }: { eticheta: string; valoare: stri
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{eticheta}</p>
-      <p className={`mt-1 text-2xl font-bold tabular-nums ${ton === "pozitiv" ? "text-emerald-700" : ton === "negativ" ? "text-red-700" : "text-slate-900"}`}>{valoare}</p>
+      <p className={`mt-1 text-lg font-bold tabular-nums sm:text-2xl ${ton === "pozitiv" ? "text-emerald-700" : ton === "negativ" ? "text-red-700" : "text-slate-900"}`}>{valoare}</p>
       {nota && <p className="mt-0.5 text-xs text-slate-500">{nota}</p>}
     </div>
   );
@@ -43,13 +43,13 @@ function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] text-sm">
+        <table className="w-full text-sm sm:min-w-[520px]">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-2.5">Cheltuieli {m}</th>
               <th className="px-4 py-2.5 text-right">Cu TVA</th>
               <th className="px-4 py-2.5 text-right">Fără TVA</th>
-              <th className="w-28 px-4 py-2.5 text-right">% din total</th>
+              <th className="hidden w-28 px-4 py-2.5 text-right sm:table-cell">% din total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -69,7 +69,7 @@ function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
                     {formateazaSuma(l.faraTva, m)}
                     {l.estimat && <span className="ml-1 text-xs text-slate-400" title="TVA-ul avizelor nu e păstrat separat: estimat cu 21%">est.</span>}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="hidden px-4 py-2.5 sm:table-cell">
                     <div className="flex items-center justify-end gap-2">
                       <span className="w-10 text-right text-xs tabular-nums text-slate-500">{pct.toFixed(0)}%</span>
                       <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
@@ -86,13 +86,13 @@ function TabelCosturi({ fisa }: { fisa: FisaMoneda }) {
               <td className="px-4 py-3">TOTAL CHELTUIT</td>
               <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalCuTva, m)}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formateazaSuma(fisa.totalFaraTva, m)}</td>
-              <td />
+              <td className="hidden sm:table-cell" />
             </tr>
             <tr className="text-slate-700">
               <td className="px-4 py-2.5 font-medium">Facturat (emis)</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatCuTva, m)}</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{formateazaSuma(fisa.facturatFaraTva, m)}</td>
-              <td />
+              <td className="hidden sm:table-cell" />
             </tr>
             <tr className={`font-bold ${fisa.marja >= 0 ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
               <td className="px-4 py-3">MARJĂ (facturat − cheltuit, fără TVA)</td>
@@ -343,21 +343,53 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
               ))}
             </select>
           )}
-          {lunaAleasa !== "toate" &&
-            (inchisa ? (
-              <button type="button" onClick={redeschideLunaAleasa} disabled={seInchide} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-50">
-                Redeschide luna
-              </button>
-            ) : (
-              <button type="button" onClick={inchideLunaAleasa} disabled={seInchide || !dateComplete} className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
-                {seInchide ? "Se salvează…" : dateComplete ? "Închide luna" : "Se calculează…"}
-              </button>
-            ))}
           <a href={`/api/export?santier_id=${santier.id}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
             Export CSV
           </a>
         </div>
       </header>
+
+      {/* ---------- închiderea lunii ---------- */}
+      {luniDisponibile.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">Închiderea lunii</h2>
+          <p className="mt-0.5 text-sm text-slate-500">Când o lună e terminată, o închizi și cifrele ei rămân înghețate. Atinge o lună:</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {luniDisponibile.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLunaAleasa(l)}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium ${lunaAleasa === l ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700"}`}
+              >
+                {inchideri[l] ? "🔒 " : ""}
+                {etichetaLuna(l)}
+              </button>
+            ))}
+          </div>
+          {lunaAleasa === "toate" ? (
+            <p className="mt-3 text-sm text-slate-500">Nicio lună aleasă acum (se vede toată perioada).</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-slate-800">
+                {etichetaLuna(lunaAleasa)}: {inchisa ? "închisă" : "deschisă"}
+              </span>
+              {inchisa ? (
+                <button type="button" onClick={redeschideLunaAleasa} disabled={seInchide} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-50">
+                  Redeschide luna
+                </button>
+              ) : (
+                <button type="button" onClick={inchideLunaAleasa} disabled={seInchide || !dateComplete} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  {seInchide ? "Se salvează…" : dateComplete ? "Închide luna" : "Se calculează…"}
+                </button>
+              )}
+              <button type="button" onClick={() => setLunaAleasa("toate")} className="text-sm text-slate-500 underline">
+                Arată toată perioada
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {inchisa && (
         <div className="rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm text-slate-700">
