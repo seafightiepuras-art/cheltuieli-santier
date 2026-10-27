@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formateazaSuma } from "@/lib/format";
+import { formateazaData, formateazaSuma } from "@/lib/format";
 import { SumaAnimata } from "@/components/SumaAnimata";
 import type { RaspunsCosturi } from "@/lib/costuri-tipuri";
 
@@ -301,10 +301,29 @@ export function CosturiInterne({
             }}
           />
           <p className="mt-1.5 text-xs text-slate-500">
-            Motorina fiecărui vehicul (litrii din Alimentări) se împarte pe șantiere după zilele lucrate pe fiecare.
+            Alimentările la care ai ales șantierul în Pontaj → Alimentări se duc direct pe el. Restul (nealocate) se împart pe șantiere după zilele lucrate. Prețul de aici se folosește doar când o alimentare nu are preț.
           </p>
         </div>
       </Sectiune>
+
+      {(c.motorinaDirecta ?? []).length > 0 && (
+        <Sectiune titlu="Motorină alocată direct" subtitlu="Alimentări trecute pe acest șantier în Pontaj → Alimentări" total={c.totalMotorinaDirecta ?? 0}>
+          <div className="divide-y divide-slate-100">
+            {(c.motorinaDirecta ?? []).map((m) => (
+              <div key={m.id} className="flex items-start justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">{m.vehicul}</p>
+                  <p className="text-xs text-slate-500">
+                    {formateazaData(m.data)} · {m.litri.toFixed(2)} L{m.pret !== null && ` · ${m.pret} lei/L`}
+                    {m.pretGeneral && " · preț general (alimentarea nu are preț)"}
+                  </p>
+                </div>
+                <p className="shrink-0 font-semibold text-slate-900">{formateazaSuma(m.total)}</p>
+              </div>
+            ))}
+          </div>
+        </Sectiune>
+      )}
 
       <section className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 shadow-md shadow-slate-100">
         <h2 className="mb-2 font-semibold text-xl text-slate-700">Costuri din pontaj, în total</h2>

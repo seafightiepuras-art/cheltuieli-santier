@@ -23,9 +23,22 @@ export interface CostResursa {
   costMotorina: number;
 }
 
+/** Alimentare cu motorină trecută direct pe șantier, în Pontaj → Alimentări. */
+export interface MotorinaDirecta {
+  id: string;
+  vehicul: string;
+  data: string;
+  litri: number;
+  pret: number | null;
+  total: number;
+  pretGeneral: boolean;
+}
+
 export interface CosturiPontaj {
   oameni: CostOm[];
   resurse: CostResursa[];
+  motorinaDirecta?: MotorinaDirecta[];
+  totalMotorinaDirecta?: number;
   totalManopera: number;
   totalPlus?: number;
   totalOameni?: number;
