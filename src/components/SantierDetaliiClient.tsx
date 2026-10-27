@@ -7,6 +7,7 @@ import { CATEGORII } from "@/lib/types";
 import type { Aviz, Santier } from "@/lib/types";
 import type { RaspunsCosturi } from "@/lib/costuri-tipuri";
 import type { RaspunsFacturiPrimite } from "@/lib/facturi-tipuri";
+import type { InchideriSantier } from "@/lib/inchideri-tipuri";
 import { calculeazaFisa, faraTvaEmisa, type FisaMoneda } from "@/lib/fisa";
 import { formateazaData, formateazaSuma } from "@/lib/format";
 import { CosturiInterne } from "@/components/CosturiInterne";
@@ -152,6 +153,21 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
     };
   }, [santier.id, lunaAleasa, versiuneCosturi]);
 
+  // Lunile închise ale acestui șantier
+  const [inchideri, setInchideri] = useState<InchideriSantier>({});
+  const [versiuneInchideri, setVersiuneInchideri] = useState(0);
+  const [seInchide, setSeInchide] = useState(false);
+  useEffect(() => {
+    let anulat = false;
+    fetch(`/api/inchideri?santier=${santier.id}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => !anulat && setInchideri(j.inchideri ?? {}))
+      .catch(() => {});
+    return () => {
+      anulat = true;
+    };
+  }, [santier.id, versiuneInchideri]);
+
   useEffect(() => {
     let anulat = false;
     setIncarcareFp(true);
@@ -229,10 +245,42 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
   const avizeFaraPret = avizeNefacturate.filter(avizAreProduseFaraPret);
 
   const interne = costuri?.configurat && costuri.costuri ? costuri.costuri : null;
-  const fise = useMemo(
+  const fiseLive = useMemo(
     () => calculeazaFisa({ avizeNefacturate, facturi: facturiAlocate, emise: emiseFiltrate, interne }),
     [avizeNefacturate, facturiAlocate, emiseFiltrate, interne]
   );
+
+  // Luna închisă: se afișează cifrele înghețate, nu cele calculate acum.
+  const inchisa = lunaAleasa !== "toate" ? inchideri[lunaAleasa] : undefined;
+  const fise = inchisa ? inchisa.fise : fiseLive;
+  const ronLive = fiseLive.find((f) => f.moneda === "RON");
+  const ronInghetat = inchisa?.fise.find((f) => f.moneda === "RON");
+  const modificatDupaInchidere = !!(ronLive && ronInghetat && (Math.abs(ronLive.totalFaraTva - ronInghetat.totalFaraTva) > 0.5 || Math.abs(ronLive.facturatFaraTva - ronInghetat.facturatFaraTva) > 0.5));
+  const dateComplete = !incarcareCosturi && !incarcareFp && !eroareCosturi && !eroareFp && !!fp;
+
+  async function inchideLunaAleasa() {
+    if (lunaAleasa === "toate" || !dateComplete) return;
+    const nealocatLuna = fp?.nealocat ?? [];
+    const mesaj = `Închizi luna ${etichetaLuna(lunaAleasa)} pentru ${santier.nume}? Cifrele de acum se îngheață și nu se mai schimbă, nici dacă se modifică pontajul sau facturile. O poți redeschide oricând.${
+      interne ? "" : "\n\nAtenție: șantierul nu e legat de pontaj, deci oamenii, utilajele și motorina nu sunt incluse."
+    }`;
+    if (!confirm(mesaj)) return;
+    setSeInchide(true);
+    const res = await fetch("/api/inchideri", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ santierId: santier.id, luna: lunaAleasa, fise: fiseLive, nealocat: nealocatLuna }) });
+    setSeInchide(false);
+    if (!res.ok) return alert("Nu am putut închide luna.");
+    setVersiuneInchideri((v) => v + 1);
+  }
+
+  async function redeschideLunaAleasa() {
+    if (lunaAleasa === "toate") return;
+    if (!confirm(`Redeschizi luna ${etichetaLuna(lunaAleasa)}? Cifrele vor reveni la cele calculate în timp real.`)) return;
+    setSeInchide(true);
+    const res = await fetch("/api/inchideri", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ santierId: santier.id, luna: lunaAleasa }) });
+    setSeInchide(false);
+    if (!res.ok) return alert("Nu am putut redeschide luna.");
+    setVersiuneInchideri((v) => v + 1);
+  }
   const fisaRon = fise.find((f) => f.moneda === "RON") ?? fise[0];
   const alteMonede = fise.filter((f) => f.moneda !== "RON" && (f.totalCuTva > 0 || f.facturatCuTva > 0));
   const nealocatRon = (fp?.nealocat ?? []).find((n) => n.moneda === "RON");
@@ -295,11 +343,36 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
               ))}
             </select>
           )}
+          {lunaAleasa !== "toate" &&
+            (inchisa ? (
+              <button type="button" onClick={redeschideLunaAleasa} disabled={seInchide} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-50">
+                Redeschide luna
+              </button>
+            ) : (
+              <button type="button" onClick={inchideLunaAleasa} disabled={seInchide || !dateComplete} className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
+                {seInchide ? "Se salvează…" : dateComplete ? "Închide luna" : "Se calculează…"}
+              </button>
+            ))}
           <a href={`/api/export?santier_id=${santier.id}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
             Export CSV
           </a>
         </div>
       </header>
+
+      {inchisa && (
+        <div className="rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm text-slate-700">
+          <p className="font-semibold text-slate-900">
+            Luna închisă pe {new Date(inchisa.inchisLa).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}
+          </p>
+          <p>Cifrele de mai jos sunt înghețate la momentul închiderii.</p>
+          {modificatDupaInchidere && ronLive && ronInghetat && (
+            <p className="mt-1 font-medium text-amber-800">
+              Atenție: după închidere s-au schimbat datele. Acum ar rezulta cheltuit {formateazaSuma(ronLive.totalFaraTva, "RON")} și facturat {formateazaSuma(ronLive.facturatFaraTva, "RON")} (fără TVA), față de{" "}
+              {formateazaSuma(ronInghetat.totalFaraTva, "RON")} și {formateazaSuma(ronInghetat.facturatFaraTva, "RON")} înghețate. Redeschide și închide din nou ca să le actualizezi.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ---------- cifre principale ---------- */}
       {fisaRon && (
