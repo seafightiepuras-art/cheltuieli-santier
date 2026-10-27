@@ -170,17 +170,6 @@ function Sectiune({ titlu, subtitlu, total, children }: { titlu: string; subtitl
   );
 }
 
-function Cifra({ eticheta, suma }: { eticheta: string; suma: number }) {
-  return (
-    <div className="rounded-xl border border-pink-100 bg-white px-3 py-2 text-center">
-      <p className="text-[11px] font-medium leading-tight text-pink-400">{eticheta}</p>
-      <p className="text-base font-bold text-rose-700">
-        <SumaAnimata suma={suma} moneda="RON" />
-      </p>
-    </div>
-  );
-}
-
 function Linie({ eticheta, suma, subtil }: { eticheta: string; suma: number; subtil?: boolean }) {
   return (
     <div className={`flex items-baseline justify-between gap-3 py-0.5 ${subtil ? "text-sm text-pink-400" : ""}`}>
@@ -224,14 +213,14 @@ export function CosturiInterne({
   }
 
   const c = raspuns.costuri;
-  const procent = raspuns.procentDari ?? c.procentDari ?? 40;
+  const procent = c.procentDari ?? raspuns.procentDari ?? 40;
   const zileFmt = (z: number) => (Number.isInteger(z) ? String(z) : z.toFixed(1).replace(".", ","));
 
   return (
     <div className="flex flex-col gap-5">
       <Legatura raspuns={raspuns} santierId={santierId} reincarca={reincarca} deschisImplicit={false} />
 
-      {/* ---------- OAMENI: rezumat ---------- */}
+      {/* ---------- OAMENI: câte un rând pe fiecare, cu valoarea finală ---------- */}
       <section className="rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="font-fancy text-xl text-pink-600">Oameni</h2>
@@ -239,74 +228,32 @@ export function CosturiInterne({
             {c.nrOameni ?? c.oameni.length} {(c.nrOameni ?? c.oameni.length) === 1 ? "om" : "oameni"} · {zileFmt(c.zileOameni ?? 0)} zile
           </p>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Cifra eticheta="Net (card, din stat)" suma={c.totalNet ?? 0} />
-          <Cifra eticheta="Brut (din stat)" suma={c.totalBrut ?? 0} />
-          <Cifra eticheta="Cash" suma={c.totalCash ?? 0} />
-          <Cifra eticheta={`Dividende (${procent}%)`} suma={c.totalDividende ?? 0} />
-        </div>
+
+        {c.oameni.length === 0 && <p className="mt-3 text-center text-sm text-pink-400">Nimeni nu e pontat pe acest șantier în perioada aleasă.</p>}
+
+        <ul className="mt-3 divide-y divide-pink-100">
+          {c.oameni.map((o) => (
+            <li key={o.angajatId} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-lg font-bold text-rose-800">{o.nume}</p>
+                <p className="text-sm text-pink-500">
+                  {zileFmt(o.zile)} {o.zile === 1 ? "zi" : "zile"}
+                  {o.tarifZi === null && " · fără tarif în Salarii"}
+                </p>
+              </div>
+              <p className="shrink-0 text-xl font-extrabold text-rose-700">{formateazaSuma(o.total)}</p>
+            </li>
+          ))}
+        </ul>
+
         <div className="mt-3 flex items-center justify-between rounded-xl bg-pink-100/80 px-4 py-3">
           <span className="text-sm font-semibold text-pink-700">Cost total oameni</span>
           <span className="text-2xl font-bold text-rose-700">
             <SumaAnimata suma={c.totalOameni ?? 0} moneda="RON" />
           </span>
         </div>
-        <p className="mt-2 text-xs text-pink-400">
-          Cei de pe stat: brut + CAM (2,25%) + cash + dividende. Cei fără stat: cash + dividende. Cash = ce le dai (zile × tarif) minus netul de pe stat.
-        </p>
+        <p className="mt-2 text-xs text-pink-400">Fiecare sumă = salariul (zile × tarif din Salarii) + {procent}%. Procentul se schimbă în Pontaj → Salarii.</p>
       </section>
-
-      {/* ---------- OAMENI: câte un card pe fiecare ---------- */}
-      {c.oameni.length === 0 && <p className="rounded-2xl bg-white/70 p-4 text-center text-sm text-pink-400">Nimeni nu e pontat pe acest șantier în perioada aleasă.</p>}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {c.oameni.map((o) => (
-          <article key={o.angajatId} className="rounded-2xl border border-pink-200 bg-white/90 p-4 shadow-sm shadow-pink-100">
-            <header className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h3 className="truncate text-lg font-bold text-rose-800">{o.nume}</h3>
-                <p className="text-sm text-pink-500">
-                  {zileFmt(o.zile)} {o.zile === 1 ? "zi" : "zile"}
-                  {o.tarifZi !== null ? (o.salariuFix !== null ? ` × ${formateazaSuma(o.tarifZi)} (salariu fix ${formateazaSuma(o.salariuFix)} ÷ 22)` : ` × ${formateazaSuma(o.tarifZi)}`) : " · fără tarif în Salarii"}
-                  {" = "}
-                  <strong>{formateazaSuma(o.manopera ?? 0)}</strong>
-                </p>
-              </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${o.peStat ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                {o.peStat ? "pe stat" : "fără stat"}
-              </span>
-            </header>
-
-            <dl className="mt-3 text-base">
-              {o.peStat && (
-                <div className="mb-2 rounded-xl bg-pink-50/70 px-3 py-2">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-pink-400">Din stat (la acest șantier)</p>
-                  <Linie eticheta="Net (card)" suma={o.net ?? 0} />
-                  <Linie eticheta="Brut" suma={o.brut ?? 0} />
-                  <Linie eticheta="CAM 2,25%" suma={o.cam ?? 0} subtil />
-                </div>
-              )}
-              <Linie eticheta="Cash" suma={o.cash ?? 0} />
-              <Linie eticheta={`Dividende ${procent}% din cash`} suma={o.dividende ?? 0} />
-              <div className="mt-2 flex items-center justify-between border-t-2 border-pink-200 pt-2">
-                <dt className="font-bold text-rose-700">COST TOTAL</dt>
-                <dd className="text-xl font-extrabold text-rose-700">{formateazaSuma(o.total)}</dd>
-              </div>
-            </dl>
-          </article>
-        ))}
-      </div>
-
-      <div className="rounded-xl bg-pink-50/80 p-3">
-        <CampNumar
-          valoare={procent}
-          eticheta="Dividende:"
-          sufix="% din cash"
-          onSalveaza={async (v) => {
-            await salveazaSetari({ procentDari: v });
-            reincarca();
-          }}
-        />
-      </div>
 
       <Sectiune titlu="Utilaje și camioane" subtitlu="Zile pontate pe acest șantier × tariful pe zi pus de tine" total={c.totalUtilaje}>
         {c.resurse.length === 0 && <p className="text-sm text-pink-400">Niciun utilaj sau camion pontat aici în perioada aleasă.</p>}

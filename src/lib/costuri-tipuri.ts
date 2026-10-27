@@ -6,14 +6,10 @@ export interface CostOm {
   zile: number;
   tarifZi: number | null;
   salariuFix: number | null;
-  total: number;
   manopera?: number;
-  peStat?: boolean;
-  net?: number;
-  brut?: number;
-  cam?: number;
-  cash?: number;
-  dividende?: number;
+  plus?: number;
+  /** costul final pe om: salariu + adaos */
+  total: number;
 }
 
 export interface CostResursa {
@@ -31,12 +27,8 @@ export interface CosturiPontaj {
   oameni: CostOm[];
   resurse: CostResursa[];
   totalManopera: number;
+  totalPlus?: number;
   totalOameni?: number;
-  totalNet?: number;
-  totalBrut?: number;
-  totalCam?: number;
-  totalCash?: number;
-  totalDividende?: number;
   nrOameni?: number;
   zileOameni?: number;
   procentDari?: number;
