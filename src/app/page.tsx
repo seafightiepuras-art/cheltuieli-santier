@@ -1,56 +1,27 @@
 import Link from "next/link";
-import { fetchSantiere } from "@/lib/date";
-import { formateazaSuma } from "@/lib/format";
-import { SumaAnimata } from "@/components/SumaAnimata";
+import { fetchAvizePeSantiere, fetchSantiere } from "@/lib/date";
 import { AdaugaSantier } from "@/components/AdaugaSantier";
+import { ListaSantiere } from "@/components/ListaSantiere";
 
 export const dynamic = "force-dynamic";
 
 export default async function Acasa() {
-  const santiere = await fetchSantiere();
+  const [santiere, peSantier] = await Promise.all([fetchSantiere(), fetchAvizePeSantiere()]);
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4 pb-24">
-      <header className="pt-6 text-center">
-        <h1 className="titlu-sclipitor font-fancy text-4xl drop-shadow-sm">✨ Cheltuieli Șantier ✨</h1>
-        <p className="mt-2 text-sm font-medium text-rose-500">Avize și cheltuieli, centralizate pe fiecare șantier 💕</p>
+    <main className="fisa-santier mx-auto flex max-w-2xl flex-col gap-5 p-4 pb-24">
+      <header className="pt-4">
+        <h1 className="text-2xl font-bold text-slate-900">Cheltuieli șantier</h1>
+        <p className="mt-1 text-sm text-slate-500">Cât s-a cheltuit, cât s-a facturat și marja, pe fiecare șantier.</p>
       </header>
 
-      <div className="flex flex-col gap-3">
-        {santiere.length === 0 && (
-          <p className="rounded-2xl border-2 border-dashed border-pink-300 bg-white/70 p-6 text-center text-sm font-medium text-pink-400 backdrop-blur-sm">
-            Niciun șantier încă — adaugă primul mai jos 🌸
-          </p>
-        )}
-        {santiere.map((s, i) => (
-          <Link
-            key={s.id}
-            href={`/santier/${s.id}`}
-            style={{ animationDelay: `${Math.min(i, 8) * 80}ms` }}
-            className={`apare card-roz flex items-center justify-between rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm hover:shadow-lg hover:shadow-pink-200 ${!s.activ ? "opacity-50" : ""}`}
-          >
-            <span className="font-semibold text-rose-800">{s.nume}</span>
-            <span className="flex flex-col items-end gap-1">
-              {s.totaluriPeMoneda.length === 0 ? (
-                <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-pink-600">{formateazaSuma(0)}</span>
-              ) : (
-                s.totaluriPeMoneda.map((t) => (
-                  <span key={t.moneda} className="rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-pink-600">
-                    <SumaAnimata suma={t.total} moneda={t.moneda} />
-                  </span>
-                ))
-              )}
-            </span>
-          </Link>
-        ))}
-        <AdaugaSantier />
-      </div>
+      {santiere.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">Niciun șantier încă. Adaugă primul mai jos.</p>}
+      <ListaSantiere
+        santiere={santiere.map((s) => ({ id: s.id, nume: s.nume, activ: s.activ, avize: peSantier[s.id]?.avize ?? [], emise: peSantier[s.id]?.emise ?? [] }))}
+      />
+      <AdaugaSantier />
 
-      <Link
-        href="/adauga"
-        className="fab fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-3xl text-white shadow-lg shadow-pink-300"
-        aria-label="Adaugă aviz"
-      >
+      <Link href="/adauga" className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-3xl text-white shadow-lg" aria-label="Adaugă aviz">
         +
       </Link>
     </main>

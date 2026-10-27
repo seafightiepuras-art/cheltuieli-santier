@@ -58,6 +58,18 @@ export async function fetchAvizeSantier(santierId: string): Promise<Aviz[]> {
   return (data ?? []) as Aviz[];
 }
 
+/** Toate avizele și facturile emise, grupate pe șantier, doar cu câmpurile necesare calculului din fișă (pentru lista de pe prima pagină). */
+export async function fetchAvizePeSantiere(): Promise<Record<string, { avize: Aviz[]; emise: Aviz[] }>> {
+  const supabase = creeazaClientServer();
+  const { data } = await supabase.from("avize").select("id, santier_id, moneda, data_aviz, camp_incert, produse(valoare, pret_unitar)");
+  const rezultat: Record<string, { avize: Aviz[]; emise: Aviz[] }> = {};
+  for (const a of (data ?? []) as unknown as Aviz[]) {
+    const grup = (rezultat[a.santier_id] ??= { avize: [], emise: [] });
+    (esteFacturaEmisa(a) ? grup.emise : grup.avize).push(a);
+  }
+  return rezultat;
+}
+
 /** Nume de furnizori folosiți deja, pentru sugestii la completare (evită "Ciment SRL" vs "ciment srl"). */
 export async function fetchFurnizoriCunoscuti(): Promise<string[]> {
   const supabase = creeazaClientServer();

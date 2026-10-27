@@ -33,38 +33,27 @@ export function AdaugaSantier() {
 
   if (!deschis) {
     return (
-      <button
-        onClick={() => setDeschis(true)}
-        className="rounded-2xl border-2 border-dashed border-pink-300 bg-white/60 py-3 text-sm font-semibold text-pink-500 backdrop-blur-sm transition hover:bg-white/80"
-      >
-        🌷 Adaugă șantier nou
+      <button onClick={() => setDeschis(true)} className="rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+        Adaugă șantier nou
       </button>
     );
   }
 
   return (
-    <form onSubmit={adauga} className="flex flex-col gap-2 rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
+    <form onSubmit={adauga} className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <input
         autoFocus
-        className="rounded-xl border border-pink-200 bg-white/90 p-2 text-sm text-rose-800 placeholder:text-pink-300 focus:border-pink-400 focus:outline-none"
+        className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
         placeholder="Numele șantierului"
         value={nume}
         onChange={(e) => setNume(e.target.value)}
       />
-      {eroare && <p className="text-sm text-red-500">{eroare}</p>}
+      {eroare && <p className="text-sm text-red-600">{eroare}</p>}
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setDeschis(false)}
-          className="flex-1 rounded-full border-2 border-pink-200 py-2 text-sm font-semibold text-pink-500"
-        >
+        <button type="button" onClick={() => setDeschis(false)} className="flex-1 rounded-lg border border-slate-300 py-2 text-sm font-semibold text-slate-700">
           Renunță
         </button>
-        <button
-          type="submit"
-          disabled={seTrimite}
-          className="flex-1 rounded-full bg-gradient-to-r from-pink-400 to-rose-400 py-2 text-sm font-semibold text-white shadow-md shadow-pink-200 disabled:opacity-50"
-        >
+        <button type="submit" disabled={seTrimite} className="flex-1 rounded-lg bg-slate-900 py-2 text-sm font-semibold text-white disabled:opacity-50">
           {seTrimite ? "Se adaugă…" : "Adaugă"}
         </button>
       </div>
