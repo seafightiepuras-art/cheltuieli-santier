@@ -221,16 +221,16 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
               <div key={c.moneda} className="mt-4 flex flex-col gap-2">
                 {maiMulteMonede && <p className="text-xs font-bold uppercase tracking-wide text-pink-400">{c.moneda}</p>}
                 <Rand eticheta="Băgat (avize)" suma={c.avize} moneda={c.moneda} />
-                {areInterne && <Rand eticheta="Manoperă, dări, utilaje, motorină" suma={c.interne} moneda={c.moneda} semn="+" />}
+                {areInterne && <Rand eticheta="Oameni, utilaje, motorină" suma={c.interne} moneda={c.moneda} semn="+" />}
                 {areInterne && (
                   <div className="border-t border-pink-100 pt-2">
-                    <Rand eticheta="Total băgat (cu manoperă și utilaje)" suma={c.totalReal} moneda={c.moneda} />
+                    <Rand eticheta="Total băgat (cu oameni, utilaje, motorină)" suma={c.totalReal} moneda={c.moneda} />
                   </div>
                 )}
                 <Rand eticheta="Scos (facturi emise)" suma={c.facturat} moneda={c.moneda} />
                 <div className="mt-1 flex flex-col gap-1.5">
                   <Diferenta eticheta={areInterne ? "Diferență, doar avize" : "Diferență (scos − băgat)"} valoare={c.facturat - c.avize} moneda={c.moneda} />
-                  {areInterne && <Diferenta eticheta="Diferență, cu manoperă și utilaje" valoare={c.facturat - c.totalReal} moneda={c.moneda} />}
+                  {areInterne && <Diferenta eticheta="Diferență, cu oameni, utilaje, motorină" valoare={c.facturat - c.totalReal} moneda={c.moneda} />}
                 </div>
               </div>
             );

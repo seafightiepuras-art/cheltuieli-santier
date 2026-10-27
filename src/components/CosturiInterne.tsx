@@ -166,6 +166,26 @@ function Sectiune({ titlu, subtitlu, total, children }: { titlu: string; subtitl
   );
 }
 
+function Cifra({ eticheta, suma }: { eticheta: string; suma: number }) {
+  return (
+    <div className="rounded-xl border border-pink-100 bg-white px-3 py-2 text-center">
+      <p className="text-[11px] font-medium leading-tight text-pink-400">{eticheta}</p>
+      <p className="text-base font-bold text-rose-700">
+        <SumaAnimata suma={suma} moneda="RON" />
+      </p>
+    </div>
+  );
+}
+
+function Linie({ eticheta, suma, subtil }: { eticheta: string; suma: number; subtil?: boolean }) {
+  return (
+    <div className={`flex items-baseline justify-between gap-3 py-0.5 ${subtil ? "text-sm text-pink-400" : ""}`}>
+      <dt className={subtil ? "" : "text-rose-600"}>{eticheta}</dt>
+      <dd className={subtil ? "" : "font-semibold text-rose-800"}>{formateazaSuma(suma)}</dd>
+    </div>
+  );
+}
+
 export function CosturiInterne({
   santierId,
   raspuns,
@@ -200,72 +220,88 @@ export function CosturiInterne({
   }
 
   const c = raspuns.costuri;
+  const procent = raspuns.procentDari ?? c.procentDari ?? 40;
+  const zileFmt = (z: number) => (Number.isInteger(z) ? String(z) : z.toFixed(1).replace(".", ","));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <Legatura raspuns={raspuns} santierId={santierId} reincarca={reincarca} deschisImplicit={false} />
 
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { eticheta: "Manoperă", suma: c.totalManopera },
-          { eticheta: "Dări la stat", suma: c.totalDari ?? 0 },
-          { eticheta: "Utilaje", suma: c.totalUtilaje },
-          { eticheta: "Motorină", suma: c.totalMotorina },
-          { eticheta: "Total costuri", suma: c.totalInterne, accent: true, lat: true },
-        ].map((p, i) => (
-          <div
-            key={p.eticheta}
-            style={{ animationDelay: `${i * 80}ms` }}
-            className={`apare rounded-2xl border p-3 text-center shadow-sm backdrop-blur-sm ${p.lat ? "col-span-2 " : ""}${p.accent ? "border-pink-300 bg-pink-50/90" : "border-pink-200 bg-white/85"}`}
-          >
-            <p className="text-xs font-medium text-pink-400">{p.eticheta}</p>
-            <p className="text-lg font-bold text-rose-700">
-              <SumaAnimata suma={p.suma} moneda="RON" />
-            </p>
-          </div>
+      {/* ---------- OAMENI: rezumat ---------- */}
+      <section className="rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-md shadow-pink-100 backdrop-blur-sm">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="font-fancy text-xl text-pink-600">Oameni</h2>
+          <p className="text-sm font-semibold text-rose-600">
+            {c.nrOameni ?? c.oameni.length} {(c.nrOameni ?? c.oameni.length) === 1 ? "om" : "oameni"} · {zileFmt(c.zileOameni ?? 0)} zile
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Cifra eticheta="Net (card, din stat)" suma={c.totalNet ?? 0} />
+          <Cifra eticheta="Brut (din stat)" suma={c.totalBrut ?? 0} />
+          <Cifra eticheta="Cash" suma={c.totalCash ?? 0} />
+          <Cifra eticheta={`Dividende (${procent}%)`} suma={c.totalDividende ?? 0} />
+        </div>
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-pink-100/80 px-4 py-3">
+          <span className="text-sm font-semibold text-pink-700">Cost total oameni</span>
+          <span className="text-2xl font-bold text-rose-700">
+            <SumaAnimata suma={c.totalOameni ?? 0} moneda="RON" />
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-pink-400">
+          Cei de pe stat: brut + CAM (2,25%) + cash + dividende. Cei fără stat: cash + dividende. Cash = ce le dai (zile × tarif) minus netul de pe stat.
+        </p>
+      </section>
+
+      {/* ---------- OAMENI: câte un card pe fiecare ---------- */}
+      {c.oameni.length === 0 && <p className="rounded-2xl bg-white/70 p-4 text-center text-sm text-pink-400">Nimeni nu e pontat pe acest șantier în perioada aleasă.</p>}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {c.oameni.map((o) => (
+          <article key={o.angajatId} className="rounded-2xl border border-pink-200 bg-white/90 p-4 shadow-sm shadow-pink-100">
+            <header className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="truncate text-lg font-bold text-rose-800">{o.nume}</h3>
+                <p className="text-sm text-pink-500">
+                  {zileFmt(o.zile)} {o.zile === 1 ? "zi" : "zile"}
+                  {o.tarifZi !== null ? (o.salariuFix !== null ? ` × ${formateazaSuma(o.tarifZi)} (salariu fix ${formateazaSuma(o.salariuFix)} ÷ 22)` : ` × ${formateazaSuma(o.tarifZi)}`) : " · fără tarif în Salarii"}
+                  {" = "}
+                  <strong>{formateazaSuma(o.manopera ?? 0)}</strong>
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${o.peStat ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {o.peStat ? "pe stat" : "fără stat"}
+              </span>
+            </header>
+
+            <dl className="mt-3 text-base">
+              {o.peStat && (
+                <div className="mb-2 rounded-xl bg-pink-50/70 px-3 py-2">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-pink-400">Din stat (la acest șantier)</p>
+                  <Linie eticheta="Net (card)" suma={o.net ?? 0} />
+                  <Linie eticheta="Brut" suma={o.brut ?? 0} />
+                  <Linie eticheta="CAM 2,25%" suma={o.cam ?? 0} subtil />
+                </div>
+              )}
+              <Linie eticheta="Cash" suma={o.cash ?? 0} />
+              <Linie eticheta={`Dividende ${procent}% din cash`} suma={o.dividende ?? 0} />
+              <div className="mt-2 flex items-center justify-between border-t-2 border-pink-200 pt-2">
+                <dt className="font-bold text-rose-700">COST TOTAL</dt>
+                <dd className="text-xl font-extrabold text-rose-700">{formateazaSuma(o.total)}</dd>
+              </div>
+            </dl>
+          </article>
         ))}
       </div>
 
-      <Sectiune titlu="Manoperă și dări la stat" total={c.totalManopera + (c.totalDari ?? 0)}>
-        {c.oameni.length === 0 && <p className="text-sm text-pink-400">Nimeni nu e pontat pe acest șantier în perioada aleasă.</p>}
-        <div className="divide-y divide-pink-100">
-          {c.oameni.map((o) => (
-            <div key={o.angajatId} className="flex items-start justify-between gap-3 py-2">
-              <div className="min-w-0">
-                <p className="font-medium text-rose-800">
-                  {o.nume} {o.peStat && <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-semibold text-pink-600">pe stat</span>}
-                </p>
-                <p className="text-xs text-pink-400">
-                  {o.zile} {o.zile === 1 ? "zi" : "zile"}
-                  {o.tarifZi !== null
-                    ? o.salariuFix !== null
-                      ? ` × ${formateazaSuma(o.tarifZi)} (salariu fix ${formateazaSuma(o.salariuFix)} ÷ 22)`
-                      : ` × ${formateazaSuma(o.tarifZi)}`
-                    : " · fără tarif în Salarii"}
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="font-semibold text-rose-700">{formateazaSuma(o.total)}</p>
-                {(o.dari ?? 0) > 0 && <p className="text-xs text-pink-400">+ {formateazaSuma(o.dari ?? 0)} dări</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Sectiune>
-
       <div className="rounded-xl bg-pink-50/80 p-3">
         <CampNumar
-          valoare={raspuns.procentDari ?? c.procentDari ?? 40}
-          eticheta="Dări pentru cei care nu sunt pe stat:"
-          sufix="% din manoperă"
+          valoare={procent}
+          eticheta="Dividende:"
+          sufix="% din cash"
           onSalveaza={async (v) => {
             await salveazaSetari({ procentDari: v });
             reincarca();
           }}
         />
-        <p className="mt-1.5 text-xs text-pink-400">
-          Cei de pe statul de plată au dările reale (CAS + CASS + impozit + 2,25% CAM), împărțite pe zilele lucrate. Ceilalți au acest procent din manopera lor.
-        </p>
       </div>
 
       <Sectiune titlu="Utilaje și camioane" subtitlu="Zile pontate pe acest șantier × tariful pe zi pus de tine" total={c.totalUtilaje}>
@@ -318,6 +354,20 @@ export function CosturiInterne({
           </p>
         </div>
       </Sectiune>
+
+      <section className="rounded-2xl border-2 border-pink-300 bg-pink-50/90 p-4 shadow-md shadow-pink-100">
+        <h2 className="mb-2 font-fancy text-xl text-pink-600">Costuri din pontaj, în total</h2>
+        <dl className="text-base">
+          <Linie eticheta="Oameni" suma={c.totalOameni ?? 0} />
+          <Linie eticheta="Utilaje" suma={c.totalUtilaje} />
+          <Linie eticheta="Motorină" suma={c.totalMotorina} />
+          <div className="mt-2 flex items-center justify-between border-t-2 border-pink-300 pt-2">
+            <dt className="font-bold text-rose-700">TOTAL</dt>
+            <dd className="text-2xl font-extrabold text-rose-700">{formateazaSuma(c.totalInterne)}</dd>
+          </div>
+        </dl>
+        <p className="mt-2 text-xs text-pink-400">Avizele (materiale etc.) se adaugă sus, în „Cât am băgat vs cât scot".</p>
+      </section>
     </div>
   );
 }

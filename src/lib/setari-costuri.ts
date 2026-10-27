@@ -29,10 +29,13 @@ async function asiguraBucket() {
 
 export async function citesteSetari(): Promise<SetariCosturi> {
   const supabase = creeazaClientAdmin();
-  const { data, error } = await supabase.storage.from(BUCKET).download(FISIER);
-  if (error || !data) return { ...GOALE, legaturi: {}, tarife: {} };
+  // citim cu adresă semnată + fără cache, ca după o salvare să vedem imediat valoarea nouă (download() putea întoarce versiunea veche)
+  const { data: semnat } = await supabase.storage.from(BUCKET).createSignedUrl(FISIER, 60);
+  if (!semnat?.signedUrl) return { ...GOALE, legaturi: {}, tarife: {} };
+  const raspuns = await fetch(`${semnat.signedUrl}&t=${Date.now()}`, { cache: "no-store" });
+  if (!raspuns.ok) return { ...GOALE, legaturi: {}, tarife: {} };
   try {
-    const j = JSON.parse(await data.text());
+    const j = JSON.parse(await raspuns.text());
     return {
       legaturi: j.legaturi && typeof j.legaturi === "object" ? j.legaturi : {},
       tarife: j.tarife && typeof j.tarife === "object" ? j.tarife : {},
@@ -49,6 +52,6 @@ export async function scrieSetari(setari: SetariCosturi): Promise<void> {
   const supabase = creeazaClientAdmin();
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(FISIER, new Blob([JSON.stringify(setari)], { type: "application/json" }), { upsert: true, contentType: "application/json" });
+    .upload(FISIER, new Blob([JSON.stringify(setari)], { type: "application/json" }), { upsert: true, contentType: "application/json", cacheControl: "0" });
   if (error) throw new Error(error.message);
 }
