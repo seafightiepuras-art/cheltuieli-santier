@@ -15,9 +15,11 @@ export interface SetariCosturi {
   tarife: Record<string, number>;
   /** preț motorină, lei/litru */
   pretMotorina: number | null;
+  /** dări la stat pentru cei care nu sunt pe statul de plată: % din manoperă (implicit 40) */
+  procentDari: number;
 }
 
-const GOALE: SetariCosturi = { legaturi: {}, tarife: {}, pretMotorina: null };
+const GOALE: SetariCosturi = { legaturi: {}, tarife: {}, pretMotorina: null, procentDari: 40 };
 
 async function asiguraBucket() {
   const supabase = creeazaClientAdmin();
@@ -35,6 +37,7 @@ export async function citesteSetari(): Promise<SetariCosturi> {
       legaturi: j.legaturi && typeof j.legaturi === "object" ? j.legaturi : {},
       tarife: j.tarife && typeof j.tarife === "object" ? j.tarife : {},
       pretMotorina: typeof j.pretMotorina === "number" ? j.pretMotorina : null,
+      procentDari: typeof j.procentDari === "number" ? j.procentDari : 40,
     };
   } catch {
     return { ...GOALE, legaturi: {}, tarife: {} };

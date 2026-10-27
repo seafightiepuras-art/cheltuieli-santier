@@ -16,8 +16,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ configurat: false, lista });
     }
 
-    const costuri = await apeleazaPontaj<CosturiPontaj>({ santiere: legat, luna: lunaValida, tarife: setari.tarife, pretMotorina: setari.pretMotorina });
-    return NextResponse.json({ configurat: true, legat, pretMotorina: setari.pretMotorina, costuri });
+    const costuri = await apeleazaPontaj<CosturiPontaj>({ santiere: legat, luna: lunaValida, tarife: setari.tarife, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari });
+    return NextResponse.json({ configurat: true, legat, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari, costuri });
   } catch (e) {
     return NextResponse.json({ eroare: (e as Error).message }, { status: 502 });
   }

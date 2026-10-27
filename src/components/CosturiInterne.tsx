@@ -208,14 +208,15 @@ export function CosturiInterne({
       <div className="grid grid-cols-2 gap-3">
         {[
           { eticheta: "Manoperă", suma: c.totalManopera },
+          { eticheta: "Dări la stat", suma: c.totalDari ?? 0 },
           { eticheta: "Utilaje", suma: c.totalUtilaje },
           { eticheta: "Motorină", suma: c.totalMotorina },
-          { eticheta: "Total costuri", suma: c.totalInterne, accent: true },
+          { eticheta: "Total costuri", suma: c.totalInterne, accent: true, lat: true },
         ].map((p, i) => (
           <div
             key={p.eticheta}
             style={{ animationDelay: `${i * 80}ms` }}
-            className={`apare rounded-2xl border p-3 text-center shadow-sm backdrop-blur-sm ${p.accent ? "border-pink-300 bg-pink-50/90" : "border-pink-200 bg-white/85"}`}
+            className={`apare rounded-2xl border p-3 text-center shadow-sm backdrop-blur-sm ${p.lat ? "col-span-2 " : ""}${p.accent ? "border-pink-300 bg-pink-50/90" : "border-pink-200 bg-white/85"}`}
           >
             <p className="text-xs font-medium text-pink-400">{p.eticheta}</p>
             <p className="text-lg font-bold text-rose-700">
@@ -225,13 +226,15 @@ export function CosturiInterne({
         ))}
       </div>
 
-      <Sectiune titlu="Manoperă" total={c.totalManopera}>
+      <Sectiune titlu="Manoperă și dări la stat" total={c.totalManopera + (c.totalDari ?? 0)}>
         {c.oameni.length === 0 && <p className="text-sm text-pink-400">Nimeni nu e pontat pe acest șantier în perioada aleasă.</p>}
         <div className="divide-y divide-pink-100">
           {c.oameni.map((o) => (
             <div key={o.angajatId} className="flex items-start justify-between gap-3 py-2">
               <div className="min-w-0">
-                <p className="font-medium text-rose-800">{o.nume}</p>
+                <p className="font-medium text-rose-800">
+                  {o.nume} {o.peStat && <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-semibold text-pink-600">pe stat</span>}
+                </p>
                 <p className="text-xs text-pink-400">
                   {o.zile} {o.zile === 1 ? "zi" : "zile"}
                   {o.tarifZi !== null
@@ -241,11 +244,29 @@ export function CosturiInterne({
                     : " · fără tarif în Salarii"}
                 </p>
               </div>
-              <span className="shrink-0 font-semibold text-rose-700">{formateazaSuma(o.total)}</span>
+              <div className="shrink-0 text-right">
+                <p className="font-semibold text-rose-700">{formateazaSuma(o.total)}</p>
+                {(o.dari ?? 0) > 0 && <p className="text-xs text-pink-400">+ {formateazaSuma(o.dari ?? 0)} dări</p>}
+              </div>
             </div>
           ))}
         </div>
       </Sectiune>
+
+      <div className="rounded-xl bg-pink-50/80 p-3">
+        <CampNumar
+          valoare={raspuns.procentDari ?? c.procentDari ?? 40}
+          eticheta="Dări pentru cei care nu sunt pe stat:"
+          sufix="% din manoperă"
+          onSalveaza={async (v) => {
+            await salveazaSetari({ procentDari: v });
+            reincarca();
+          }}
+        />
+        <p className="mt-1.5 text-xs text-pink-400">
+          Cei de pe statul de plată au dările reale (CAS + CASS + impozit + 2,25% CAM), împărțite pe zilele lucrate. Ceilalți au acest procent din manopera lor.
+        </p>
+      </div>
 
       <Sectiune titlu="Utilaje și camioane" subtitlu="Zile pontate pe acest șantier × tariful pe zi pus de tine" total={c.totalUtilaje}>
         {c.resurse.length === 0 && <p className="text-sm text-pink-400">Niciun utilaj sau camion pontat aici în perioada aleasă.</p>}

@@ -31,6 +31,10 @@ export async function PUT(req: Request) {
       setari.pretMotorina = typeof p === "number" && Number.isFinite(p) && p >= 0 ? p : null;
     }
 
+    if (typeof corp.procentDari === "number" && Number.isFinite(corp.procentDari) && corp.procentDari >= 0 && corp.procentDari <= 200) {
+      setari.procentDari = corp.procentDari;
+    }
+
     await scrieSetari(setari);
     return NextResponse.json({ ok: true });
   } catch (e) {

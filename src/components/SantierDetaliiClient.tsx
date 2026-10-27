@@ -221,7 +221,7 @@ export function SantierDetaliiClient({ santier, avize, emise }: { santier: Santi
               <div key={c.moneda} className="mt-4 flex flex-col gap-2">
                 {maiMulteMonede && <p className="text-xs font-bold uppercase tracking-wide text-pink-400">{c.moneda}</p>}
                 <Rand eticheta="Băgat (avize)" suma={c.avize} moneda={c.moneda} />
-                {areInterne && <Rand eticheta="Manoperă, utilaje, motorină" suma={c.interne} moneda={c.moneda} semn="+" />}
+                {areInterne && <Rand eticheta="Manoperă, dări, utilaje, motorină" suma={c.interne} moneda={c.moneda} semn="+" />}
                 {areInterne && (
                   <div className="border-t border-pink-100 pt-2">
                     <Rand eticheta="Total băgat (cu manoperă și utilaje)" suma={c.totalReal} moneda={c.moneda} />
