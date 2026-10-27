@@ -15,6 +15,10 @@ export default async function Acasa() {
         <p className="mt-1 text-sm text-slate-500">Cât s-a cheltuit, cât s-a facturat și marja, pe fiecare șantier.</p>
       </header>
 
+      <Link href="/cauta" className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50">
+        🔍 Caută în toate avizele
+      </Link>
+
       {santiere.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">Niciun șantier încă. Adaugă primul mai jos.</p>}
       <ListaSantiere
         santiere={santiere.map((s) => ({ id: s.id, nume: s.nume, activ: s.activ, avize: peSantier[s.id]?.avize ?? [], emise: peSantier[s.id]?.emise ?? [] }))}
