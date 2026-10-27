@@ -62,6 +62,7 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
   const [alese, setAlese] = useState<string[]>(raspuns.legat ?? []);
   const [deschis, setDeschis] = useState(deschisImplicit);
   const [seSalveaza, setSeSalveaza] = useState(false);
+  const [salvat, setSalvat] = useState(false);
   const [lista, setLista] = useState<string[] | null>(raspuns.lista?.santiere ?? null);
   const [eroareLista, setEroareLista] = useState<string | null>(null);
 
@@ -83,15 +84,19 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
   }, [deschis, lista]);
 
   async function salveaza() {
+    if (seSalveaza || salvat) return; // o singură apăsare e de ajuns
     setSeSalveaza(true);
     try {
       await salveazaSetari({ santierId, legatura: alese });
+      setSalvat(true);
+      // ne ducem sus, unde apar datele, ca să se vadă că s-a salvat
+      document.querySelector("[role=tablist]")?.scrollIntoView({ behavior: "smooth", block: "start" });
       setDeschis(false);
       reincarca(true);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Nu am putut salva.");
+      setSeSalveaza(false);
     }
-    setSeSalveaza(false);
   }
 
   if (!deschis) {
@@ -114,10 +119,10 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
       )}
       <button
         onClick={salveaza}
-        disabled={seSalveaza || alese.length === 0}
+        disabled={seSalveaza || salvat || alese.length === 0}
         className="flex-1 rounded-full bg-gradient-to-r from-pink-400 to-rose-400 py-2 text-sm font-semibold text-white shadow-md shadow-pink-200 disabled:opacity-50"
       >
-        {seSalveaza ? "Se salvează…" : alese.length === 0 ? "Bifează un șantier" : "Salvează legătura"}
+        {salvat ? "✔ Salvat" : seSalveaza ? "Se salvează…" : alese.length === 0 ? "Bifează un șantier" : "Salvează legătura"}
       </button>
     </div>
   );
@@ -125,8 +130,7 @@ function Legatura({ raspuns, santierId, reincarca, deschisImplicit }: { raspuns:
   return (
     <div className="rounded-2xl border border-pink-200 bg-white/85 p-4 shadow-sm shadow-pink-100 backdrop-blur-sm">
       <p className="font-semibold text-rose-700">Cu ce șantier din pontaj se leagă acesta?</p>
-      <p className="mb-3 text-xs text-pink-400">Bifează unul sau mai multe, apoi apasă „Salvează legătura”. Costurile lor (oameni, utilaje, motorină) se adună aici.</p>
-      <div className="mb-3">{butoane}</div>
+      <p className="mb-3 text-xs text-pink-400">Bifează unul sau mai multe, apoi apasă „Salvează legătura” (butonul de jos). Costurile lor (oameni, utilaje, motorină) se adună aici.</p>
       {!lista && !eroareLista && <p className="text-sm text-pink-400">Se aduce lista din pontaj…</p>}
       {eroareLista && <p className="text-sm text-red-600">{eroareLista}</p>}
       <div className="flex flex-col gap-1.5">
