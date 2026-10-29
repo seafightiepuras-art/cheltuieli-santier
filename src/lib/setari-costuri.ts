@@ -17,9 +17,11 @@ export interface SetariCosturi {
   pretMotorina: number | null;
   /** dări la stat pentru cei care nu sunt pe statul de plată: % din manoperă (implicit 40) */
   procentDari: number;
+  /** id șantier (cheltuieli) -> km dus-întors de la sediu până la șantier (pentru transportul oamenilor) */
+  km: Record<string, number>;
 }
 
-const GOALE: SetariCosturi = { legaturi: {}, tarife: {}, pretMotorina: null, procentDari: 40 };
+const GOALE: SetariCosturi = { legaturi: {}, tarife: {}, pretMotorina: null, procentDari: 40, km: {} };
 
 async function asiguraBucket() {
   const supabase = creeazaClientAdmin();
@@ -31,9 +33,9 @@ export async function citesteSetari(): Promise<SetariCosturi> {
   const supabase = creeazaClientAdmin();
   // citim cu adresă semnată + fără cache, ca după o salvare să vedem imediat valoarea nouă (download() putea întoarce versiunea veche)
   const { data: semnat } = await supabase.storage.from(BUCKET).createSignedUrl(FISIER, 60);
-  if (!semnat?.signedUrl) return { ...GOALE, legaturi: {}, tarife: {} };
+  if (!semnat?.signedUrl) return { ...GOALE, legaturi: {}, tarife: {}, km: {} };
   const raspuns = await fetch(`${semnat.signedUrl}&t=${Date.now()}`, { cache: "no-store" });
-  if (!raspuns.ok) return { ...GOALE, legaturi: {}, tarife: {} };
+  if (!raspuns.ok) return { ...GOALE, legaturi: {}, tarife: {}, km: {} };
   try {
     const j = JSON.parse(await raspuns.text());
     return {
@@ -41,9 +43,10 @@ export async function citesteSetari(): Promise<SetariCosturi> {
       tarife: j.tarife && typeof j.tarife === "object" ? j.tarife : {},
       pretMotorina: typeof j.pretMotorina === "number" ? j.pretMotorina : null,
       procentDari: typeof j.procentDari === "number" ? j.procentDari : 40,
+      km: j.km && typeof j.km === "object" ? j.km : {},
     };
   } catch {
-    return { ...GOALE, legaturi: {}, tarife: {} };
+    return { ...GOALE, legaturi: {}, tarife: {}, km: {} };
   }
 }
 

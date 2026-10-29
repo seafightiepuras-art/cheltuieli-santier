@@ -13,7 +13,7 @@ const rotunjeste = (n: number) => Math.round(n * 100) / 100;
 const faraTvaEstimat = (cuTva: number) => rotunjeste(cuTva / (1 + COTA_TVA_ESTIMATA_AVIZE / 100));
 
 export interface LinieFisa {
-  cheie: "avize" | "facturi" | "oameni" | "utilaje" | "motorina";
+  cheie: "avize" | "facturi" | "oameni" | "utilaje" | "transport" | "motorina";
   eticheta: string;
   nota?: string;
   cuTva: number;
@@ -79,9 +79,20 @@ export function calculeazaFisa(opt: {
         const oameni = i.totalOameni ?? 0;
         linii.push(
           { cheie: "oameni", eticheta: "Oameni", nota: `salariu + ${i.procentDari ?? 40}%`, cuTva: oameni, faraTva: oameni, nr: i.nrOameni },
-          { cheie: "utilaje", eticheta: "Utilaje", cuTva: i.totalUtilaje, faraTva: i.totalUtilaje },
-          { cheie: "motorina", eticheta: "Motorină", cuTva: i.totalMotorina, faraTva: i.totalMotorina }
+          { cheie: "utilaje", eticheta: "Utilaje", cuTva: i.totalUtilaje, faraTva: i.totalUtilaje }
         );
+        // transportul oamenilor apare doar la șantierele la care s-au setat km
+        if (i.transport?.km) {
+          linii.push({
+            cheie: "transport",
+            eticheta: "Transport",
+            nota: `${i.transport.km} km dus-întors × ${i.transport.zile} zile`,
+            cuTva: i.transport.total,
+            faraTva: i.transport.total,
+            nr: i.transport.zile,
+          });
+        }
+        linii.push({ cheie: "motorina", eticheta: "Motorină", cuTva: i.totalMotorina, faraTva: i.totalMotorina });
       }
 
       const totalCuTva = rotunjeste(linii.reduce((s, l) => s + l.cuTva, 0));

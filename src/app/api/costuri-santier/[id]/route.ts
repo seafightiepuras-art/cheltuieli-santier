@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { citesteSetari } from "@/lib/setari-costuri";
 import { apeleazaPontaj, type CosturiPontaj, type ListaPontaj } from "@/lib/pontaj";
+import { calculeazaTransport } from "@/lib/costuri-tipuri";
 
 /** Costurile din pontaj ale unui șantier: manoperă, utilaje, motorină. `luna` = YYYY-MM sau „toate”. */
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -17,7 +18,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     const costuri = await apeleazaPontaj<CosturiPontaj>({ santiere: legat, luna: lunaValida, tarife: setari.tarife, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari });
-    return NextResponse.json({ configurat: true, legat, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari, costuri });
+    // transportul oamenilor: km dus-întors × zilele cu oameni pontați × 7,5 L/100 km × prețul motorinei (doar la șantierele bifate)
+    const transport = calculeazaTransport(setari.km[params.id], costuri.zileSantier ?? 0, setari.pretMotorina);
+    return NextResponse.json({ configurat: true, legat, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari, costuri: { ...costuri, transport } });
   } catch (e) {
     return NextResponse.json({ eroare: (e as Error).message }, { status: 502 });
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { formateazaData, formateazaSuma } from "@/lib/format";
 import { SumaAnimata } from "@/components/SumaAnimata";
-import type { RaspunsCosturi } from "@/lib/costuri-tipuri";
+import { CONSUM_TRANSPORT_L_100KM, type RaspunsCosturi } from "@/lib/costuri-tipuri";
 
 async function salveazaSetari(corp: Record<string, unknown>) {
   const res = await fetch("/api/costuri-setari", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corp) });
@@ -306,6 +306,20 @@ export function CosturiInterne({
         </div>
       </Sectiune>
 
+      {c.transport?.km ? (
+        <Sectiune titlu="Transport" subtitlu="Drumul oamenilor la șantier, un drum dus-întors pe zi" total={c.transport.total}>
+          <p className="text-sm text-slate-700">
+            {c.transport.km} km dus-întors × {c.transport.zile} {c.transport.zile === 1 ? "zi" : "zile"} = <strong>{c.transport.kmTotal} km</strong>
+          </p>
+          <p className="text-sm text-slate-700">
+            {c.transport.kmTotal} km × {CONSUM_TRANSPORT_L_100KM} L/100 km = <strong>{c.transport.litri} L</strong>
+            {c.transport.pret !== null ? ` × ${c.transport.pret} lei/L` : ""}
+          </p>
+          {c.transport.pret === null && <p className="mt-1 text-xs text-amber-700">Prețul motorinei nu e setat, deci costul e 0.</p>}
+          <p className="mt-1 text-xs text-slate-500">Kilometrii se schimbă din „Transport pe șantiere", de pe prima pagină.</p>
+        </Sectiune>
+      ) : null}
+
       {(c.motorinaDirecta ?? []).length > 0 && (
         <Sectiune titlu="Motorină alocată direct" subtitlu="Alimentări trecute pe acest șantier în Pontaj → Alimentări" total={c.totalMotorinaDirecta ?? 0}>
           <div className="divide-y divide-slate-100">
@@ -330,10 +344,11 @@ export function CosturiInterne({
         <dl className="text-base">
           <Linie eticheta="Oameni" suma={c.totalOameni ?? 0} />
           <Linie eticheta="Utilaje" suma={c.totalUtilaje} />
+          {c.transport?.km ? <Linie eticheta="Transport" suma={c.transport.total} /> : null}
           <Linie eticheta="Motorină" suma={c.totalMotorina} />
           <div className="mt-2 flex items-center justify-between border-t-2 border-slate-300 pt-2">
             <dt className="font-bold text-slate-900">TOTAL</dt>
-            <dd className="text-2xl font-extrabold text-slate-900">{formateazaSuma(c.totalInterne)}</dd>
+            <dd className="text-2xl font-extrabold text-slate-900">{formateazaSuma(c.totalInterne + (c.transport?.total ?? 0))}</dd>
           </div>
         </dl>
         <p className="mt-2 text-xs text-slate-500">Avizele (materiale etc.) se adaugă sus, în „Cât am băgat vs cât scot".</p>

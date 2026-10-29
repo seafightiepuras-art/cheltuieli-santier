@@ -26,6 +26,13 @@ export async function PUT(req: Request) {
       }
     }
 
+    // km dus-întors până la un șantier (transportul oamenilor); gol/null = fără transport
+    if (typeof corp.santierId === "string" && "km" in corp) {
+      const k = corp.km;
+      if (typeof k === "number" && Number.isFinite(k) && k > 0 && k < 5000) setari.km[corp.santierId] = k;
+      else delete setari.km[corp.santierId];
+    }
+
     if ("pretMotorina" in corp) {
       const p = corp.pretMotorina;
       setari.pretMotorina = typeof p === "number" && Number.isFinite(p) && p >= 0 ? p : null;
