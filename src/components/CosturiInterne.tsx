@@ -267,12 +267,10 @@ export function CosturiInterne({
                   </p>
                   <p className="text-xs text-slate-500">
                     {r.zile} {r.zile === 1 ? "zi" : "zile"}
-                    {r.litri > 0 && ` · ${r.litri.toFixed(0)} L motorină alocată`}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-semibold text-slate-900">{formateazaSuma(r.costTarif)}</p>
-                  {r.costMotorina > 0 && <p className="text-xs text-slate-500">+ {formateazaSuma(r.costMotorina)} motorină</p>}
                 </div>
               </div>
               <div className="mt-1.5">
@@ -301,7 +299,7 @@ export function CosturiInterne({
             }}
           />
           <p className="mt-1.5 text-xs text-slate-500">
-            Alimentările la care ai ales șantierul în Pontaj → Alimentări se duc direct pe el. Restul (nealocate) se împart pe șantiere după zilele lucrate. Prețul de aici se folosește doar când o alimentare nu are preț.
+            Motorina intră în cost doar la alimentările la care ai ales șantierul în Pontaj → Alimentări. Cele nealocate nu se împart nicăieri. Prețul de aici se folosește doar când o alimentare cu șantier nu are preț.
           </p>
         </div>
       </Sectiune>

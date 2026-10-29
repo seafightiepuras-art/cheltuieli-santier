@@ -19,8 +19,6 @@ export interface CostResursa {
   zile: number;
   tarifZi: number | null;
   costTarif: number;
-  litri: number;
-  costMotorina: number;
 }
 
 /** Alimentare cu motorină trecută direct pe șantier, în Pontaj → Alimentări. */
