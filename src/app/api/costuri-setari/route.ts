@@ -33,6 +33,13 @@ export async function PUT(req: Request) {
       else delete setari.km[corp.santierId];
     }
 
+    // preț pe litru doar pentru transportul unui șantier (gol/null = prețul general al motorinei)
+    if (typeof corp.santierId === "string" && "pretTransport" in corp) {
+      const p = corp.pretTransport;
+      if (typeof p === "number" && Number.isFinite(p) && p > 0 && p < 1000) setari.pretTransport[corp.santierId] = p;
+      else delete setari.pretTransport[corp.santierId];
+    }
+
     if ("pretMotorina" in corp) {
       const p = corp.pretMotorina;
       setari.pretMotorina = typeof p === "number" && Number.isFinite(p) && p >= 0 ? p : null;

@@ -19,9 +19,11 @@ export interface SetariCosturi {
   procentDari: number;
   /** id șantier (cheltuieli) -> km dus-întors de la sediu până la șantier (pentru transportul oamenilor) */
   km: Record<string, number>;
+  /** id șantier (cheltuieli) -> preț pe litru doar pentru transportul oamenilor, dacă diferă de prețul general (ex. mașina merge pe gaz) */
+  pretTransport: Record<string, number>;
 }
 
-const GOALE: SetariCosturi = { legaturi: {}, tarife: {}, pretMotorina: null, procentDari: 40, km: {} };
+const GOALE: SetariCosturi = { legaturi: {}, tarife: {}, pretMotorina: null, procentDari: 40, km: {}, pretTransport: {} };
 
 async function asiguraBucket() {
   const supabase = creeazaClientAdmin();
@@ -33,9 +35,9 @@ export async function citesteSetari(): Promise<SetariCosturi> {
   const supabase = creeazaClientAdmin();
   // citim cu adresă semnată + fără cache, ca după o salvare să vedem imediat valoarea nouă (download() putea întoarce versiunea veche)
   const { data: semnat } = await supabase.storage.from(BUCKET).createSignedUrl(FISIER, 60);
-  if (!semnat?.signedUrl) return { ...GOALE, legaturi: {}, tarife: {}, km: {} };
+  if (!semnat?.signedUrl) return { ...GOALE, legaturi: {}, tarife: {}, km: {}, pretTransport: {} };
   const raspuns = await fetch(`${semnat.signedUrl}&t=${Date.now()}`, { cache: "no-store" });
-  if (!raspuns.ok) return { ...GOALE, legaturi: {}, tarife: {}, km: {} };
+  if (!raspuns.ok) return { ...GOALE, legaturi: {}, tarife: {}, km: {}, pretTransport: {} };
   try {
     const j = JSON.parse(await raspuns.text());
     return {
@@ -44,9 +46,10 @@ export async function citesteSetari(): Promise<SetariCosturi> {
       pretMotorina: typeof j.pretMotorina === "number" ? j.pretMotorina : null,
       procentDari: typeof j.procentDari === "number" ? j.procentDari : 40,
       km: j.km && typeof j.km === "object" ? j.km : {},
+      pretTransport: j.pretTransport && typeof j.pretTransport === "object" ? j.pretTransport : {},
     };
   } catch {
-    return { ...GOALE, legaturi: {}, tarife: {}, km: {} };
+    return { ...GOALE, legaturi: {}, tarife: {}, km: {}, pretTransport: {} };
   }
 }
 

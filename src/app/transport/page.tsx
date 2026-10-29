@@ -19,7 +19,7 @@ export default async function Transport() {
         <p className="mt-1 text-sm text-slate-500">Bifează șantierele la care se adaugă costul drumului. La celelalte nu se adaugă nimic.</p>
       </header>
 
-      <TransportClient santiere={santiere.map((s) => ({ id: s.id, nume: s.nume, km: setari.km[s.id] ?? null }))} pretMotorina={setari.pretMotorina} />
+      <TransportClient santiere={santiere.map((s) => ({ id: s.id, nume: s.nume, km: setari.km[s.id] ?? null, pret: setari.pretTransport[s.id] ?? null }))} pretMotorina={setari.pretMotorina} />
     </main>
   );
 }

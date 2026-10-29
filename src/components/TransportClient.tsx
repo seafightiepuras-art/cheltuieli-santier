@@ -8,6 +8,8 @@ interface SantierTransport {
   id: string;
   nume: string;
   km: number | null;
+  /** preț pe litru doar pentru transportul acestui șantier; null = prețul general */
+  pret: number | null;
 }
 
 // Kilometrii dus-întors calculați pe șosea de la Mizil (centru) până în localitatea șantierului; se pot corecta oricând.
@@ -31,7 +33,11 @@ function kmSugerat(nume: string): number | null {
 }
 
 async function salveazaKm(santierId: string, km: number | null) {
-  const res = await fetch("/api/costuri-setari", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ santierId, km }) });
+  return salveazaSetare({ santierId, km });
+}
+
+async function salveazaSetare(corp: Record<string, unknown>) {
+  const res = await fetch("/api/costuri-setari", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corp) });
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.eroare ?? "Nu am putut salva.");
@@ -76,6 +82,25 @@ function Rand({ s, pretMotorina }: { s: SantierTransport; pretMotorina: number |
     await aplica(n);
   }
 
+  const [pretText, setPretText] = useState(s.pret !== null ? String(s.pret) : "");
+  const [pretSalvat, setPretSalvat] = useState<number | null>(s.pret);
+  const pretNr = Number(pretText.replace(",", "."));
+  const pretFolosit = pretText.trim() !== "" && Number.isFinite(pretNr) && pretNr > 0 ? pretNr : pretMotorina;
+
+  async function lasaPret() {
+    const n = pretText.trim() === "" ? null : Number(pretText.replace(",", "."));
+    if (n !== null && (!Number.isFinite(n) || n <= 0)) return;
+    if (n === pretSalvat) return;
+    setStare("salveaza");
+    try {
+      await salveazaSetare({ santierId: s.id, pretTransport: n });
+      setPretSalvat(n);
+      setStare("ok");
+    } catch {
+      setStare("eroare");
+    }
+  }
+
   const kmNr = Number(text.replace(",", "."));
   const kmValid = bifat && Number.isFinite(kmNr) && kmNr > 0;
   const lunaTipica = kmValid ? (kmNr * 20 * CONSUM_TRANSPORT_L_100KM) / 100 : 0;
@@ -108,14 +133,28 @@ function Rand({ s, pretMotorina }: { s: SantierTransport; pretMotorina: number |
             />
             km
           </label>
+          <label className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+            Preț / litru:
+            <input
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              value={pretText}
+              placeholder={pretMotorina !== null ? String(pretMotorina) : "general"}
+              onChange={(e) => setPretText(e.target.value)}
+              onBlur={lasaPret}
+              className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-right text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            lei <span className="text-xs text-slate-400">(gol = prețul general)</span>
+          </label>
           {sugestie !== null && !kmValid && <p className="mt-1 text-xs text-slate-500">Calculat pe șosea de la Mizil: ≈ {sugestie} km dus-întors. Scrie tu valoarea și iese din căsuță.</p>}
           {sugestie === null && !kmValid && <p className="mt-1 text-xs text-slate-500">Scrie tu câți km are drumul dus-întors într-o zi.</p>}
           {bifat && !kmValid && <p className="mt-1 text-xs text-amber-700">Până nu scrii kilometrii, nu se adaugă nimic la costuri.</p>}
           {kmValid && (
             <p className="mt-1 text-xs text-slate-500">
-              O zi pe șantier ≈ {formateazaSuma(((kmNr * CONSUM_TRANSPORT_L_100KM) / 100) * (pretMotorina ?? 0))}
-              {pretMotorina === null ? " (setează prețul motorinei ca să se calculeze)" : ` (${((kmNr * CONSUM_TRANSPORT_L_100KM) / 100).toFixed(2)} L × ${pretMotorina} lei)`}. La 20 de zile: ≈{" "}
-              {formateazaSuma(lunaTipica * (pretMotorina ?? 0))}.
+              O zi pe șantier ≈ {formateazaSuma(((kmNr * CONSUM_TRANSPORT_L_100KM) / 100) * (pretFolosit ?? 0))}
+              {pretFolosit === null ? " (setează prețul motorinei ca să se calculeze)" : ` (${((kmNr * CONSUM_TRANSPORT_L_100KM) / 100).toFixed(2)} L × ${pretFolosit} lei)`}. La 20 de zile: ≈{" "}
+              {formateazaSuma(lunaTipica * (pretFolosit ?? 0))}.
             </p>
           )}
         </div>

@@ -19,7 +19,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     const costuri = await apeleazaPontaj<CosturiPontaj>({ santiere: legat, luna: lunaValida, tarife: setari.tarife, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari });
     // transportul oamenilor: km dus-întors × zilele cu oameni pontați × 7,5 L/100 km × prețul motorinei (doar la șantierele bifate)
-    const transport = calculeazaTransport(setari.km[params.id], costuri.zileSantier ?? 0, setari.pretMotorina);
+    const transport = calculeazaTransport(setari.km[params.id], costuri.zileSantier ?? 0, setari.pretTransport[params.id] ?? setari.pretMotorina);
     return NextResponse.json({ configurat: true, legat, pretMotorina: setari.pretMotorina, procentDari: setari.procentDari, costuri: { ...costuri, transport } });
   } catch (e) {
     return NextResponse.json({ eroare: (e as Error).message }, { status: 502 });
